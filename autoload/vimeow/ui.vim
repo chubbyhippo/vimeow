@@ -114,8 +114,8 @@ export class VimUi implements P.UiPort
   def Info(title: string, body: string)
     var lines = [title, repeat('-', len(title))] + split(body, "\n", true)
     var width = 0
-    for l in lines
-      width = max([width, strdisplaywidth(l)])
+    for line in lines
+      width = max([width, strdisplaywidth(line)])
     endfor
     popup_dialog(lines, {
       title: ' vimeow ',
@@ -167,12 +167,12 @@ export class VimUi implements P.UiPort
       return
     endif
     var keyWidth = 0
-    for r in rows
-      keyWidth = max([keyWidth, strdisplaywidth(r[0])])
+    for row in rows
+      keyWidth = max([keyWidth, strdisplaywidth(row[0])])
     endfor
     var lines: list<string> = []
-    for r in rows[0 : WHICH_KEY_ROWS - 1]
-      lines = add(lines, printf(' %-*s  %s', keyWidth, r[0], r[1]))
+    for row in rows[0 : WHICH_KEY_ROWS - 1]
+      lines = add(lines, printf(' %-*s  %s', keyWidth, row[0], row[1]))
     endfor
     if len(rows) > WHICH_KEY_ROWS
       lines = add(lines, printf(' … %d more', len(rows) - WHICH_KEY_ROWS))
@@ -233,8 +233,8 @@ export class VimUi implements P.UiPort
   def ShowExpandHints(positions: list<number>)
     this.ClearProp(PROP_HINT)
     var i = 0
-    for p in positions
-      var pos = OffsetToPos(this.buf, p)
+    for position in positions
+      var pos = OffsetToPos(this.buf, position)
       prop_add(pos[0], 0, {
         type: PROP_HINT,
         bufnr: this.buf,
@@ -251,19 +251,19 @@ export class VimUi implements P.UiPort
 
   def ShowAvyMatches(matches: list<P.OffsetRange>)
     this.ClearProp(PROP_MATCH)
-    for m in matches
-      this.AddRange(PROP_MATCH, m.start, m.end)
+    for match in matches
+      this.AddRange(PROP_MATCH, match.start, match.end)
     endfor
   enddef
 
   def ShowAvyLabels(labels: list<P.AvyLabel>)
     this.ClearProp(PROP_LABEL)
-    for l in labels
-      var pos = OffsetToPos(this.buf, l.offset)
+    for label in labels
+      var pos = OffsetToPos(this.buf, label.offset)
       prop_add(pos[0], pos[1], {
         type: PROP_LABEL,
         bufnr: this.buf,
-        text: l.label,
+        text: label.label,
         text_align: 'before',
       })
     endfor
@@ -290,8 +290,8 @@ export class VimUi implements P.UiPort
 
   def PaintSelections(sels: list<P.SelRange>)
     this.ClearProp(PROP_SELECTION)
-    for s in sels
-      this.AddRange(PROP_SELECTION, s.Lo(), s.Hi())
+    for sel in sels
+      this.AddRange(PROP_SELECTION, sel.Lo(), sel.Hi())
     endfor
     if this.grabRange != null_object
       this.ClearProp(PROP_GRAB)
@@ -299,9 +299,9 @@ export class VimUi implements P.UiPort
     endif
   enddef
 
-  def ModeChanged(st: St.MeowState)
-    b:vimeow_mode = st.mode
-    if st.mode == St.INSERT && bufnr('%') == this.buf && mode() !=# 'i'
+  def ModeChanged(state: St.MeowState)
+    b:vimeow_mode = state.mode
+    if state.mode == St.INSERT && bufnr('%') == this.buf && mode() !=# 'i'
       # Vim's own insert mode owns the caret shape and the typed keys. This runs
       # from inside a mapping, so the switch has to be deferred to after it.
       timer_start(0, (_) => execute('startinsert'))
@@ -309,8 +309,8 @@ export class VimUi implements P.UiPort
     redrawstatus
   enddef
 
-  def Refresh(st: St.MeowState)
-    b:vimeow_mode = st.mode
+  def Refresh(state: St.MeowState)
+    b:vimeow_mode = state.mode
     redrawstatus
   enddef
 

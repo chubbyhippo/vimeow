@@ -68,15 +68,15 @@ enddef
 export def RecordSelect(
     ctx: P.Ctx, selType: string, anchor: number, active: number,
     expand: bool, posBefore: number)
-  var st = ctx.st
-  var prev = st.lastSelection == null_object
+  var state = ctx.state
+  var prev = state.lastSelection == null_object
       ? {type: '', expand: false, anchor: posBefore, active: posBefore}
-      : {type: st.lastSelection.selType, expand: false,
-         anchor: st.lastSelection.anchor, active: st.lastSelection.active}
-  if st.lastSelection != null_object
-    prev.expand = st.selExpand
+      : {type: state.lastSelection.selType, expand: false,
+         anchor: state.lastSelection.anchor, active: state.lastSelection.active}
+  if state.lastSelection != null_object
+    prev.expand = state.selExpand
   endif
-  var history = st.selectionHistory
+  var history = state.selectionHistory
   var head = empty(history) ? null_object : history[-1]
   if head == null_object
       || !SameSaved({type: head.selType, expand: false,
@@ -88,47 +88,47 @@ export def RecordSelect(
   while len(history) > SELECTION_HISTORY_LIMIT
     remove(history, 0)
   endwhile
-  st.lastSelection = St.SavedSelection.new(selType, anchor, active)
+  state.lastSelection = St.SavedSelection.new(selType, anchor, active)
 enddef
 
 export def Select(
-    ctx: P.Ctx, selType: string, markOff: number, point: number,
+    ctx: P.Ctx, selType: string, markOffset: number, pointOffset: number,
     expand: bool, push: bool = true)
   var port = ctx.port
-  var st = ctx.st
+  var state = ctx.state
   var length = len(port.GetText())
-  var m = T.Clamp(markOff, 0, length)
-  var p = T.Clamp(point, 0, length)
+  var mark = T.Clamp(markOffset, 0, length)
+  var point = T.Clamp(pointOffset, 0, length)
   var sels = port.GetSelections()
   if push
-    RecordSelect(ctx, selType, m, p, expand, sels[0].active)
+    RecordSelect(ctx, selType, mark, point, expand, sels[0].active)
   else
-    st.lastSelection = St.SavedSelection.new(selType, m, p)
+    state.lastSelection = St.SavedSelection.new(selType, mark, point)
   endif
-  st.selType = selType
-  st.selExpand = expand
-  sels[0] = P.SelRange.new(m, p)
+  state.selType = selType
+  state.selExpand = expand
+  sels[0] = P.SelRange.new(mark, point)
   port.SetSelections(sels)
   Grab.Beacon(ctx)
   ctx.ui.ShowExpandHints(Hints.ExpandHintPositions(ctx))
 enddef
 
-export def ResetSelectionMemory(st: St.MeowState)
-  st.selectionHistory = []
-  st.lastSelection = null_object
+export def ResetSelectionMemory(state: St.MeowState)
+  state.selectionHistory = []
+  state.lastSelection = null_object
 enddef
 
 export def Collapse(ctx: P.Ctx)
   var sels = ctx.port.GetSelections()
   sels[0] = P.SelRange.new(sels[0].active, sels[0].active)
   ctx.port.SetSelections(sels)
-  ctx.st.selType = St.SEL_NONE
-  ctx.st.selExpand = false
+  ctx.state.selType = St.SEL_NONE
+  ctx.state.selExpand = false
 enddef
 
 export def Cancel(ctx: P.Ctx)
   Collapse(ctx)
-  ResetSelectionMemory(ctx.st)
+  ResetSelectionMemory(ctx.state)
 enddef
 
 export def CancelAll(ctx: P.Ctx)
@@ -150,12 +150,12 @@ def Reverse(ctx: P.Ctx)
 enddef
 
 def Pop(ctx: P.Ctx)
-  var st = ctx.st
+  var state = ctx.state
   if HasSelection(Primary(ctx))
-    if empty(st.selectionHistory)
+    if empty(state.selectionHistory)
       return
     endif
-    var entry = remove(st.selectionHistory, -1)
+    var entry = remove(state.selectionHistory, -1)
     if entry.selType == ''
       var sels = ctx.port.GetSelections()
       sels[0] = P.SelRange.new(entry.active, entry.active)
@@ -170,48 +170,49 @@ def Pop(ctx: P.Ctx)
   endif
 enddef
 
-def Expand(ctx: P.Ctx, n: number)
-  var st = ctx.st
+def Expand(ctx: P.Ctx, count: number)
+  var state = ctx.state
   var text = ctx.port.GetText()
   var back = BackwardP(ctx)
   var caret = Primary(ctx).active
   var target = -1
-  if st.selType == St.SEL_CHAR
-    target = caret + (back ? -n : n)
-  elseif st.selType == St.SEL_WORD || st.selType == St.SEL_SYMBOL
-    var Pred = T.CharPred(st.selType == St.SEL_SYMBOL)
-    target = back ? T.WordsPrevStart(text, caret, n, Pred)
-                  : T.WordsNextEnd(text, caret, n, Pred)
-  elseif st.selType == St.SEL_LINE
-    var ln = T.LineOfOffset(text, caret)
-    target = back ? T.LineStart(text, max([ln - n, 0]))
-                  : T.LineEnd(text, min([ln + n, T.LineCount(text) - 1]))
-  elseif st.selType == St.SEL_FIND || st.selType == St.SEL_TILL
-    if empty(st.lastFind)
+  if state.selType == St.SEL_CHAR
+    target = caret + (back ? -count : count)
+  elseif state.selType == St.SEL_WORD || state.selType == St.SEL_SYMBOL
+    var IsWord = T.CharPred(state.selType == St.SEL_SYMBOL)
+    target = back ? T.WordsPrevStart(text, caret, count, IsWord)
+                  : T.WordsNextEnd(text, caret, count, IsWord)
+  elseif state.selType == St.SEL_LINE
+    var caretLine = T.LineOfOffset(text, caret)
+    target = back ? T.LineStart(text, max([caretLine - count, 0]))
+                  : T.LineEnd(text, min([caretLine + count, T.LineCount(text) - 1]))
+  elseif state.selType == St.SEL_FIND || state.selType == St.SEL_TILL
+    if empty(state.lastFind)
       return
     endif
-    var t = T.NthCharTarget(text, st.lastFind.ch, caret, n, back, st.selType == St.SEL_TILL)
-    if t < 0
+    var found = T.NthCharTarget(
+      text, state.lastFind.ch, caret, count, back, state.selType == St.SEL_TILL)
+    if found < 0
       return
     endif
-    target = t
+    target = found
   else
     return
   endif
-  Select(ctx, st.selType, Mark(ctx), target, false)
+  Select(ctx, state.selType, Mark(ctx), target, false)
 enddef
 
-def ExpandOrCount(ctx: P.Ctx, n: number)
-  var st = ctx.st
-  if HasSelection(Primary(ctx)) && get(EXPANDABLE, st.selType, false)
-    Expand(ctx, n == 0 ? EXPAND_ZERO_COUNT : n)
+def ExpandOrCount(ctx: P.Ctx, digit: number)
+  var state = ctx.state
+  if HasSelection(Primary(ctx)) && get(EXPANDABLE, state.selType, false)
+    Expand(ctx, digit == 0 ? EXPAND_ZERO_COUNT : digit)
   else
-    st.pendingCount = st.pendingCount * 10 + n
+    state.pendingCount = state.pendingCount * 10 + digit
   endif
 enddef
 
-def ExpandCommand(n: number): func
-  return (ctx: P.Ctx) => ExpandOrCount(ctx, n)
+def ExpandCommand(digit: number): func
+  return (ctx: P.Ctx) => ExpandOrCount(ctx, digit)
 enddef
 
 export def Commands(): dict<func>
@@ -220,8 +221,8 @@ export def Commands(): dict<func>
     'meow-cancel-selection': CancelAll,
     'meow-pop-selection': Pop,
   }
-  for n in range(10)
-    cmds['meow-expand-' .. n] = ExpandCommand(n)
+  for digit in range(10)
+    cmds['meow-expand-' .. digit] = ExpandCommand(digit)
   endfor
   return cmds
 enddef

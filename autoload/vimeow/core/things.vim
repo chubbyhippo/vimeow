@@ -24,10 +24,10 @@ def Pair(text: string, offset: number, open: string, close: string, inner: bool)
   var start = -1
   var i = offset - 1
   while i >= 0
-    var c = T.CharAt(text, i)
-    if c == close
+    var char = T.CharAt(text, i)
+    if char == close
       depth += 1
-    elseif c == open
+    elseif char == open
       if depth == 0
         start = i
         break
@@ -42,12 +42,12 @@ def Pair(text: string, offset: number, open: string, close: string, inner: bool)
   depth = 0
   var stop = -1
   var j = offset
-  var n = len(text)
-  while j < n
-    var c = T.CharAt(text, j)
-    if c == open && j != start
+  var length = len(text)
+  while j < length
+    var char = T.CharAt(text, j)
+    if char == open && j != start
       depth += 1
-    elseif c == close
+    elseif char == close
       if depth == 0
         stop = j
         break
@@ -66,29 +66,31 @@ def Pair(text: string, offset: number, open: string, close: string, inner: bool)
 enddef
 
 def StringThing(text: string, offset: number, inner: bool): dict<number>
-  var n = len(text)
+  var length = len(text)
   var i = 0
-  while i < n
-    var c = T.CharAt(text, i)
-    if c == '"' || c == "'" || c == '`'
-      var triple = i + 2 < n && T.CharAt(text, i + 1) == c && T.CharAt(text, i + 2) == c
+  while i < length
+    var quote = T.CharAt(text, i)
+    if quote == '"' || quote == "'" || quote == '`'
+      var triple = i + 2 < length
+          && T.CharAt(text, i + 1) == quote && T.CharAt(text, i + 2) == quote
       var width = triple ? 3 : 1
       var open = i
       var j = i + width
       var closeEnd = -1
-      while j < n
-        var d = T.CharAt(text, j)
-        if !triple && d == "\n"
+      while j < length
+        var char = T.CharAt(text, j)
+        if !triple && char == "\n"
           break
         endif
-        if d == '\'
+        if char == '\'
           j += 2
         else
           var closes = true
           if triple
-            closes = j + 2 < n && T.CharAt(text, j + 1) == c && T.CharAt(text, j + 2) == c
+            closes = j + 2 < length
+                && T.CharAt(text, j + 1) == quote && T.CharAt(text, j + 2) == quote
           endif
-          if d == c && closes
+          if char == quote && closes
             closeEnd = j + width
             break
           endif
@@ -114,24 +116,24 @@ def StringThing(text: string, offset: number, inner: bool): dict<number>
 enddef
 
 def Symbol(text: string, offset: number): dict<number>
-  var o = offset
-  var n = len(text)
-  if o >= n || !T.IsSymbolChar(T.CharAt(text, o))
-    if o > 0 && T.IsSymbolChar(T.CharAt(text, o - 1))
-      o -= 1
+  var at = offset
+  var length = len(text)
+  if at >= length || !T.IsSymbolChar(T.CharAt(text, at))
+    if at > 0 && T.IsSymbolChar(T.CharAt(text, at - 1))
+      at -= 1
     else
       return {}
     endif
   endif
-  var s = o
-  var e = o
-  while s > 0 && T.IsSymbolChar(T.CharAt(text, s - 1))
-    s -= 1
+  var start = at
+  var end = at
+  while start > 0 && T.IsSymbolChar(T.CharAt(text, start - 1))
+    start -= 1
   endwhile
-  while e < n && T.IsSymbolChar(T.CharAt(text, e))
-    e += 1
+  while end < length && T.IsSymbolChar(T.CharAt(text, end))
+    end += 1
   endwhile
-  return {start: s, stop: e}
+  return {start: start, stop: end}
 enddef
 
 def Window(ctx: P.Ctx, text: string): dict<number>
@@ -148,12 +150,12 @@ def Paragraph(text: string, offset: number, inner: bool): dict<number>
     return {}
   endif
   var count = T.LineCount(text)
-  var ln = T.LineOfOffset(text, T.Clamp(offset, 0, len(text)))
-  if T.IsBlankLine(text, ln)
+  var caretLine = T.LineOfOffset(text, T.Clamp(offset, 0, len(text)))
+  if T.IsBlankLine(text, caretLine)
     return {}
   endif
-  var first = ln
-  var last = ln
+  var first = caretLine
+  var last = caretLine
   while first > 0 && !T.IsBlankLine(text, first - 1)
     first -= 1
   endwhile
@@ -168,16 +170,16 @@ def Paragraph(text: string, offset: number, inner: bool): dict<number>
   while stop < count - 1 && T.IsBlankLine(text, stop + 1)
     stop += 1
   endwhile
-  var e = stop < count - 1 ? T.LineStart(text, stop + 1) : T.LineEnd(text, stop)
-  return {start: start, stop: e}
+  var end = stop < count - 1 ? T.LineStart(text, stop + 1) : T.LineEnd(text, stop)
+  return {start: start, stop: end}
 enddef
 
 def Line(text: string, offset: number, inner: bool): dict<number>
-  var ln = T.LineOfOffset(text, T.Clamp(offset, 0, len(text)))
+  var line = T.LineOfOffset(text, T.Clamp(offset, 0, len(text)))
   if inner
-    return {start: T.LineStart(text, ln), stop: T.LineEnd(text, ln)}
+    return {start: T.LineStart(text, line), stop: T.LineEnd(text, line)}
   endif
-  return {start: T.LineStart(text, ln), stop: T.LineStart(text, ln + 1)}
+  return {start: T.LineStart(text, line), stop: T.LineStart(text, line + 1)}
 enddef
 
 def Defun(ctx: P.Ctx, text: string, offset: number): dict<number>
@@ -185,95 +187,95 @@ def Defun(ctx: P.Ctx, text: string, offset: number): dict<number>
   if fromHost != null_object
     return {start: fromHost.start, stop: fromHost.end}
   endif
-  var b = Pair(text, offset, '{', '}', false)
-  if empty(b)
+  var braces = Pair(text, offset, '{', '}', false)
+  if empty(braces)
     return {}
   endif
   while true
-    var outer = Pair(text, b.start, '{', '}', false)
+    var outer = Pair(text, braces.start, '{', '}', false)
     if empty(outer)
       break
     endif
-    b = outer
+    braces = outer
   endwhile
-  return b
+  return braces
 enddef
 
-def IsEnder(c: string): bool
-  return c != '' && stridx(T.SENTENCE_ENDERS, c) >= 0
+def IsEnder(char: string): bool
+  return char != '' && stridx(T.SENTENCE_ENDERS, char) >= 0
 enddef
 
 def Sentence(text: string, offset: number, inner: bool): dict<number>
-  var n = len(text)
-  if n == 0
+  var length = len(text)
+  if length == 0
     return {}
   endif
-  var s = T.Clamp(offset, 0, n - 1)
-  while s > 0
-    var c = T.CharAt(text, s - 1)
-    if IsEnder(c) || (c == "\n" && s > 1 && T.CharAt(text, s - 2) == "\n")
+  var start = T.Clamp(offset, 0, length - 1)
+  while start > 0
+    var char = T.CharAt(text, start - 1)
+    if IsEnder(char) || (char == "\n" && start > 1 && T.CharAt(text, start - 2) == "\n")
       break
     endif
-    s -= 1
+    start -= 1
   endwhile
-  while s < n && T.CharAt(text, s) =~ '^\s$'
-    s += 1
+  while start < length && T.CharAt(text, start) =~ '^\s$'
+    start += 1
   endwhile
-  var e = T.Clamp(offset, 0, n)
-  while e < n && !IsEnder(T.CharAt(text, e))
-      && !(T.CharAt(text, e) == "\n" && e + 1 < n && T.CharAt(text, e + 1) == "\n")
-    e += 1
+  var end = T.Clamp(offset, 0, length)
+  while end < length && !IsEnder(T.CharAt(text, end))
+      && !(T.CharAt(text, end) == "\n" && end + 1 < length && T.CharAt(text, end + 1) == "\n")
+    end += 1
   endwhile
-  if e < n && IsEnder(T.CharAt(text, e))
-    e += 1
+  if end < length && IsEnder(T.CharAt(text, end))
+    end += 1
   endif
-  if e <= s
+  if end <= start
     return {}
   endif
   if inner
-    return {start: s, stop: e}
+    return {start: start, stop: end}
   endif
-  var be = e
-  while be < n && T.CharAt(text, be) == ' '
-    be += 1
+  var afterBlanks = end
+  while afterBlanks < length && T.CharAt(text, afterBlanks) == ' '
+    afterBlanks += 1
   endwhile
-  return {start: s, stop: be}
+  return {start: start, stop: afterBlanks}
 enddef
 
-def Compute(ctx: P.Ctx, ch: string, offset: number, inner: bool): dict<number>
+def Compute(ctx: P.Ctx, char: string, offset: number, inner: bool): dict<number>
   var text = ctx.port.GetText()
-  if ch == 'r'
+  if char == 'r'
     return Pair(text, offset, '(', ')', inner)
-  elseif ch == 's'
+  elseif char == 's'
     return Pair(text, offset, '[', ']', inner)
-  elseif ch == 'c'
+  elseif char == 'c'
     return Pair(text, offset, '{', '}', inner)
-  elseif ch == 'g'
+  elseif char == 'g'
     return StringThing(text, offset, inner)
-  elseif ch == 'e'
+  elseif char == 'e'
     return Symbol(text, offset)
-  elseif ch == 'w'
+  elseif char == 'w'
     return Window(ctx, text)
-  elseif ch == 'b'
+  elseif char == 'b'
     return {start: 0, stop: len(text)}
-  elseif ch == 'p'
+  elseif char == 'p'
     return Paragraph(text, offset, inner)
-  elseif ch == 'l'
+  elseif char == 'l'
     return Line(text, offset, inner)
-  elseif ch == 'v'
+  elseif char == 'v'
     return Line(text, offset, true)
-  elseif ch == 'd'
+  elseif char == 'd'
     return Defun(ctx, text, offset)
-  elseif ch == '.'
+  elseif char == '.'
     return Sentence(text, offset, inner)
   endif
   return {}
 enddef
 
-export def Inner(ctx: P.Ctx, ch: string, offset: number): dict<number>
-  return Compute(ctx, ch, offset, true)
+export def Inner(ctx: P.Ctx, char: string, offset: number): dict<number>
+  return Compute(ctx, char, offset, true)
 enddef
 
-export def Bounds(ctx: P.Ctx, ch: string, offset: number): dict<number>
-  return Compute(ctx, ch, offset, false)
+export def Bounds(ctx: P.Ctx, char: string, offset: number): dict<number>
+  return Compute(ctx, char, offset, false)
 enddef

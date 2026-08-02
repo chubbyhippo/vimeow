@@ -40,12 +40,12 @@ const HOST_MODIFIERS = {
 
 const PREFIX_MODIFIERS = {C: 'ctrl', M: 'alt', A: 'alt', S: 'shift'}
 
-def IsLowerLetter(s: string): bool
-  return s =~ '^\l$'
+def IsLowerLetter(char: string): bool
+  return char =~ '^\l$'
 enddef
 
-def IsUpperLetter(s: string): bool
-  return s =~ '^\u$'
+def IsUpperLetter(char: string): bool
+  return char =~ '^\u$'
 enddef
 
 export def Named(token: string, shift: bool): string

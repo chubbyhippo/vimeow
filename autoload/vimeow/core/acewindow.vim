@@ -46,8 +46,8 @@ export def Ordered(candidates: list<dict<any>>): list<any>
   var sorted = copy(candidates)
   sort(sorted, (a, b) => a.x != b.x ? a.x - b.x : a.y - b.y)
   var out: list<any> = []
-  for c in sorted
-    add(out, c.item)
+  for candidate in sorted
+    add(out, candidate.item)
   endfor
   return out
 enddef

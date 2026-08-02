@@ -39,58 +39,58 @@ def EditCarets(ctx: P.Ctx, Compute: func(P.SelRange, number, number): dict<any>)
   var order: list<dict<any>> = []
   var index = 0
   for sel in sels
-    add(order, {sel: sel, index: index, lo: sel.Lo()})
+    add(order, {sel: sel, index: index, start: sel.Lo()})
     index += 1
   endfor
-  sort(order, (a, b) => a.lo != b.lo ? b.lo - a.lo : a.index - b.index)
+  sort(order, (a, b) => a.start != b.start ? b.start - a.start : a.index - b.index)
 
   var edits: list<P.TextEdit> = []
   var results: dict<any> = {}
   for item in order
-    var r = Compute(item.sel, item.lo, item.sel.Hi())
-    if r.edit != null_object
-      add(edits, r.edit)
+    var computed = Compute(item.sel, item.start, item.sel.Hi())
+    if computed.edit != null_object
+      add(edits, computed.edit)
     endif
-    results[string(item.index)] = r
+    results[string(item.index)] = computed
   endfor
 
   var newSels: list<P.SelRange> = repeat([null_object], len(sels))
   var delta = 0
   for i in range(len(order) - 1, 0, -1)
     var item = order[i]
-    var r = results[string(item.index)]
-    newSels[item.index] = P.SelRange.new(r.sel.anchor + delta, r.sel.active + delta)
-    if r.edit != null_object
-      delta += len(r.edit.text) - (r.edit.end - r.edit.start)
+    var computed = results[string(item.index)]
+    newSels[item.index] = P.SelRange.new(computed.sel.anchor + delta, computed.sel.active + delta)
+    if computed.edit != null_object
+      delta += len(computed.edit.text) - (computed.edit.end - computed.edit.start)
     endif
   endfor
 
-  Grab.AdjustForEdits(ctx.st, edits)
+  Grab.AdjustForEdits(ctx.state, edits)
   if !empty(edits)
     ctx.port.Edit(edits)
   endif
   ctx.port.SetSelections(newSels)
 enddef
 
-def DeleteSelectionOrCharForward(text: string, lo: number, hi: number): dict<any>
-  if lo != hi
-    return {edit: P.TextEdit.new(lo, hi, ''), sel: P.SelRange.new(lo, lo)}
+def DeleteSelectionOrCharForward(text: string, start: number, end: number): dict<any>
+  if start != end
+    return {edit: P.TextEdit.new(start, end, ''), sel: P.SelRange.new(start, start)}
   endif
-  if lo < len(text)
-    return {edit: P.TextEdit.new(lo, lo + 1, ''), sel: P.SelRange.new(lo, lo)}
+  if start < len(text)
+    return {edit: P.TextEdit.new(start, start + 1, ''), sel: P.SelRange.new(start, start)}
   endif
-  return {edit: null_object, sel: P.SelRange.new(lo, lo)}
+  return {edit: null_object, sel: P.SelRange.new(start, start)}
 enddef
 
 def EnterInsertAt(ctx: P.Ctx, atHigh: bool)
   var moved: list<P.SelRange> = []
-  for s in ctx.port.GetSelections()
-    var o = atHigh ? s.Hi() : s.Lo()
-    add(moved, P.SelRange.new(o, o))
+  for sel in ctx.port.GetSelections()
+    var at = atHigh ? sel.Hi() : sel.Lo()
+    add(moved, P.SelRange.new(at, at))
   endfor
   ctx.port.SetSelections(moved)
-  ctx.st.selType = St.SEL_NONE
-  Sel.ResetSelectionMemory(ctx.st)
+  ctx.state.selType = St.SEL_NONE
+  Sel.ResetSelectionMemory(ctx.state)
   ctx.SetMode(St.INSERT)
 enddef
 
@@ -102,7 +102,7 @@ def OpenBelow(ctx: P.Ctx)
   var text = ctx.port.GetText()
   var eol = T.LineEnd(text, T.LineOfOffset(text, Sel.Primary(ctx).active))
   var edits = [P.TextEdit.new(eol, eol, "\n")]
-  Grab.AdjustForEdits(ctx.st, edits)
+  Grab.AdjustForEdits(ctx.state, edits)
   ctx.port.Edit(edits)
   ctx.port.SetSelections([P.SelRange.new(eol + 1, eol + 1)])
   ctx.SetMode(St.INSERT)
@@ -114,11 +114,11 @@ def OpenAbove(ctx: P.Ctx)
   endif
   Sel.Collapse(ctx)
   var text = ctx.port.GetText()
-  var bol = T.LineStart(text, T.LineOfOffset(text, Sel.Primary(ctx).active))
-  var edits = [P.TextEdit.new(bol, bol, "\n")]
-  Grab.AdjustForEdits(ctx.st, edits)
+  var lineStartOffset = T.LineStart(text, T.LineOfOffset(text, Sel.Primary(ctx).active))
+  var edits = [P.TextEdit.new(lineStartOffset, lineStartOffset, "\n")]
+  Grab.AdjustForEdits(ctx.state, edits)
   ctx.port.Edit(edits)
-  ctx.port.SetSelections([P.SelRange.new(bol, bol)])
+  ctx.port.SetSelections([P.SelRange.new(lineStartOffset, lineStartOffset)])
   ctx.SetMode(St.INSERT)
 enddef
 
@@ -129,7 +129,7 @@ def OpenLine(ctx: P.Ctx)
   Sel.Collapse(ctx)
   var at = Sel.Primary(ctx).active
   var edits = [P.TextEdit.new(at, at, "\n")]
-  Grab.AdjustForEdits(ctx.st, edits)
+  Grab.AdjustForEdits(ctx.state, edits)
   ctx.port.Edit(edits)
   ctx.port.SetSelections([P.SelRange.new(at, at)])
 enddef
@@ -153,7 +153,7 @@ def HorizontalSpace(ctx: P.Ctx, replacement: string)
     return
   endif
   var edits = [P.TextEdit.new(from, to, replacement)]
-  Grab.AdjustForEdits(ctx.st, edits)
+  Grab.AdjustForEdits(ctx.state, edits)
   ctx.port.Edit(edits)
   var caret = from + len(replacement)
   ctx.port.SetSelections([P.SelRange.new(caret, caret)])
@@ -168,8 +168,8 @@ def Change(ctx: P.Ctx)
   if !Sel.HasSelection(prim) && prim.active >= len(text)
     return
   endif
-  EditCarets(ctx, (_s, lo, hi) => DeleteSelectionOrCharForward(text, lo, hi))
-  ctx.st.selType = St.SEL_NONE
+  EditCarets(ctx, (_sel, start, end) => DeleteSelectionOrCharForward(text, start, end))
+  ctx.state.selType = St.SEL_NONE
   ctx.SetMode(St.INSERT)
 enddef
 
@@ -178,46 +178,46 @@ def Delete(ctx: P.Ctx)
     return
   endif
   var text = ctx.port.GetText()
-  EditCarets(ctx, (_s, lo, hi) => DeleteSelectionOrCharForward(text, lo, hi))
-  ctx.st.selType = St.SEL_NONE
+  EditCarets(ctx, (_sel, start, end) => DeleteSelectionOrCharForward(text, start, end))
+  ctx.state.selType = St.SEL_NONE
 enddef
 
 def BackwardDelete(ctx: P.Ctx)
   if !AllowModify(ctx)
     return
   endif
-  def Compute(sel: P.SelRange, lo: number, hi: number): dict<any>
-    if lo != hi
-      return {edit: P.TextEdit.new(lo, hi, ''), sel: P.SelRange.new(lo, lo)}
+  def Compute(sel: P.SelRange, start: number, end: number): dict<any>
+    if start != end
+      return {edit: P.TextEdit.new(start, end, ''), sel: P.SelRange.new(start, start)}
     endif
-    if lo > 0
-      return {edit: P.TextEdit.new(lo - 1, lo, ''), sel: P.SelRange.new(lo - 1, lo - 1)}
+    if start > 0
+      return {edit: P.TextEdit.new(start - 1, start, ''), sel: P.SelRange.new(start - 1, start - 1)}
     endif
-    return {edit: null_object, sel: P.SelRange.new(lo, lo)}
+    return {edit: null_object, sel: P.SelRange.new(start, start)}
   enddef
   EditCarets(ctx, Compute)
-  ctx.st.selType = St.SEL_NONE
+  ctx.state.selType = St.SEL_NONE
 enddef
 
 def KillRange(ctx: P.Ctx, sel: P.SelRange, text: string): dict<number>
-  var lo = sel.Lo()
-  var hi = sel.Hi()
-  if ctx.st.selType == St.SEL_LINE && sel.active >= sel.anchor && hi < len(text)
-    if T.CharAt(text, hi) == "\r"
-      hi += 1
+  var start = sel.Lo()
+  var end = sel.Hi()
+  if ctx.state.selType == St.SEL_LINE && sel.active >= sel.anchor && end < len(text)
+    if T.CharAt(text, end) == "\r"
+      end += 1
     endif
-    if hi < len(text) && T.CharAt(text, hi) == "\n"
-      hi += 1
+    if end < len(text) && T.CharAt(text, end) == "\n"
+      end += 1
     endif
   endif
-  return {lo: lo, hi: hi}
+  return {start: start, end: end}
 enddef
 
 def RegionsInOrder(sels: list<P.SelRange>): list<P.SelRange>
   var regions: list<P.SelRange> = []
-  for s in sels
-    if s.anchor != s.active
-      add(regions, s)
+  for sel in sels
+    if sel.anchor != sel.active
+      add(regions, sel)
     endif
   endfor
   sort(regions, (a, b) => a.Lo() - b.Lo())
@@ -226,9 +226,9 @@ enddef
 
 def JoinedKillText(ctx: P.Ctx, text: string, regions: list<P.SelRange>): string
   var parts: list<string> = []
-  for s in regions
-    var r = KillRange(ctx, s, text)
-    add(parts, T.Slice(text, r.lo, r.hi))
+  for sel in regions
+    var killed = KillRange(ctx, sel, text)
+    add(parts, T.Slice(text, killed.start, killed.end))
   endfor
   return join(parts, "\n")
 enddef
@@ -236,57 +236,60 @@ enddef
 def JoinKill(ctx: P.Ctx)
   var text = ctx.port.GetText()
   var prim = Sel.Primary(ctx)
-  var s = prim.Lo()
-  var e = prim.Hi()
-  var before = s > 0 ? T.CharAt(text, s - 1) : "\n"
-  var after = e < len(text) ? T.CharAt(text, e) : "\n"
+  var start = prim.Lo()
+  var end = prim.Hi()
+  var before = start > 0 ? T.CharAt(text, start - 1) : "\n"
+  var after = end < len(text) ? T.CharAt(text, end) : "\n"
   var space = before != "\n" && after != "\n"
       && before !~ '^\s$' && after !~ '^\s$'
       && stridx(')]}.,;:', after) < 0
       && stridx('([{', before) < 0
-  var edits = [P.TextEdit.new(s, e, space ? ' ' : '')]
-  Grab.AdjustForEdits(ctx.st, edits)
+  var edits = [P.TextEdit.new(start, end, space ? ' ' : '')]
+  Grab.AdjustForEdits(ctx.state, edits)
   ctx.port.Edit(edits)
-  ctx.port.SetSelections([P.SelRange.new(s, s)])
-  ctx.st.selType = St.SEL_NONE
-  ctx.st.selExpand = false
+  ctx.port.SetSelections([P.SelRange.new(start, start)])
+  ctx.state.selType = St.SEL_NONE
+  ctx.state.selExpand = false
 enddef
 
 def Kill(ctx: P.Ctx)
   if !AllowModify(ctx)
     return
   endif
-  var st = ctx.st
+  var state = ctx.state
   var text = ctx.port.GetText()
   var prim = Sel.Primary(ctx)
-  if st.selType == St.SEL_JOIN && Sel.HasSelection(prim)
+  if state.selType == St.SEL_JOIN && Sel.HasSelection(prim)
     JoinKill(ctx)
     return
   endif
   if Sel.HasSelection(prim)
     ctx.clipboard.Write(JoinedKillText(ctx, text, RegionsInOrder(ctx.port.GetSelections())))
-    def Compute(sel: P.SelRange, lo: number, hi: number): dict<any>
-      if lo == hi
+    def Compute(sel: P.SelRange, start: number, end: number): dict<any>
+      if start == end
         return {edit: null_object, sel: sel}
       endif
-      var r = KillRange(ctx, sel, text)
-      return {edit: P.TextEdit.new(r.lo, r.hi, ''), sel: P.SelRange.new(r.lo, r.lo)}
+      var killed = KillRange(ctx, sel, text)
+      return {
+        edit: P.TextEdit.new(killed.start, killed.end, ''),
+        sel: P.SelRange.new(killed.start, killed.start),
+      }
     enddef
     EditCarets(ctx, Compute)
-    st.selType = St.SEL_NONE
+    state.selType = St.SEL_NONE
     return
   endif
   if len(text) == 0
     return
   endif
   var caret = prim.active
-  var ln = T.LineOfOffset(text, caret)
-  var eol = T.LineEnd(text, ln)
-  var stop = caret == eol ? T.LineStart(text, ln + 1) : eol
+  var caretLine = T.LineOfOffset(text, caret)
+  var eol = T.LineEnd(text, caretLine)
+  var stop = caret == eol ? T.LineStart(text, caretLine + 1) : eol
   if stop > caret
     ctx.clipboard.Write(T.Slice(text, caret, stop))
     var edits = [P.TextEdit.new(caret, stop, '')]
-    Grab.AdjustForEdits(st, edits)
+    Grab.AdjustForEdits(state, edits)
     ctx.port.Edit(edits)
     ctx.port.SetSelections([P.SelRange.new(caret, caret)])
   endif
@@ -301,18 +304,18 @@ def Save(ctx: P.Ctx)
   endif
   ctx.clipboard.Write(JoinedKillText(ctx, text, withSel))
   var moved: list<P.SelRange> = []
-  for s in sels
-    if s.anchor == s.active
-      add(moved, s)
+  for sel in sels
+    if sel.anchor == sel.active
+      add(moved, sel)
     else
-      var r = KillRange(ctx, s, text)
-      var caret = s.active >= s.anchor ? r.hi : r.lo
+      var killed = KillRange(ctx, sel, text)
+      var caret = sel.active >= sel.anchor ? killed.end : killed.start
       add(moved, P.SelRange.new(caret, caret))
     endif
   endfor
   ctx.port.SetSelections(moved)
-  ctx.st.selType = St.SEL_NONE
-  ctx.st.selExpand = false
+  ctx.state.selType = St.SEL_NONE
+  ctx.state.selExpand = false
 enddef
 
 def Yank(ctx: P.Ctx)
@@ -323,7 +326,7 @@ def Yank(ctx: P.Ctx)
   if clip == ''
     return
   endif
-  EditCarets(ctx, (sel, _lo, _hi) => ({
+  EditCarets(ctx, (sel, _start, _end) => ({
     edit: P.TextEdit.new(sel.active, sel.active, clip),
     sel: P.SelRange.new(sel.active + len(clip), sel.active + len(clip)),
   }))
@@ -341,30 +344,30 @@ def Replace(ctx: P.Ctx)
     return
   endif
   var clip = substitute(raw, '\n\+$', '', '')
-  def Compute(sel: P.SelRange, lo: number, hi: number): dict<any>
-    if lo == hi
+  def Compute(sel: P.SelRange, start: number, end: number): dict<any>
+    if start == end
       return {edit: null_object, sel: sel}
     endif
     return {
-      edit: P.TextEdit.new(lo, hi, clip),
-      sel: P.SelRange.new(lo + len(clip), lo + len(clip)),
+      edit: P.TextEdit.new(start, end, clip),
+      sel: P.SelRange.new(start + len(clip), start + len(clip)),
     }
   enddef
   EditCarets(ctx, Compute)
-  ctx.st.selType = St.SEL_NONE
+  ctx.state.selType = St.SEL_NONE
 enddef
 
 def CapitalizedWords(slice: string): string
-  var Pred = T.CharPred(false)
+  var IsWord = T.CharPred(false)
   var out: list<string> = []
   var inWord = false
   for i in range(len(slice))
-    var c = slice[i]
-    if Pred(c)
-      add(out, inWord ? tolower(c) : toupper(c))
+    var char = slice[i]
+    if IsWord(char)
+      add(out, inWord ? tolower(char) : toupper(char))
       inWord = true
     else
-      add(out, c)
+      add(out, char)
       inWord = false
     endif
   endfor
@@ -385,26 +388,26 @@ def CaseWord(ctx: P.Ctx, op: string)
   if BlockedReadOnly(ctx)
     return
   endif
-  var n = ctx.st.TakeCount(1)
-  if n == 0
+  var count = ctx.state.TakeCount(1)
+  if count == 0
     return
   endif
   var hadSelection = Sel.HasSelection(Sel.Primary(ctx))
   var text = ctx.port.GetText()
-  var Pred = T.CharPred(false)
-  def Compute(sel: P.SelRange, _lo: number, _hi: number): dict<any>
+  var IsWord = T.CharPred(false)
+  def Compute(sel: P.SelRange, _start: number, _end: number): dict<any>
     var from = sel.active
-    var target = n > 0
-        ? T.WordsNextEnd(text, from, n, Pred)
-        : T.WordsPrevStart(text, from, -n, Pred)
-    var s = min([from, target])
-    var e = max([from, target])
-    if s == e
+    var target = count > 0
+        ? T.WordsNextEnd(text, from, count, IsWord)
+        : T.WordsPrevStart(text, from, -count, IsWord)
+    var start = min([from, target])
+    var end = max([from, target])
+    if start == end
       return {edit: null_object, sel: sel}
     endif
-    var caret = n > 0 ? e : from
+    var caret = count > 0 ? end : from
     return {
-      edit: P.TextEdit.new(s, e, Casified(T.Slice(text, s, e), op)),
+      edit: P.TextEdit.new(start, end, Casified(T.Slice(text, start, end), op)),
       sel: P.SelRange.new(caret, caret),
     }
   enddef
@@ -418,44 +421,47 @@ def KillWord(ctx: P.Ctx)
   if BlockedReadOnly(ctx)
     return
   endif
-  var n = ctx.st.TakeCount(1)
-  if n == 0
+  var count = ctx.state.TakeCount(1)
+  if count == 0
     return
   endif
   var text = ctx.port.GetText()
-  var Pred = T.CharPred(false)
+  var IsWord = T.CharPred(false)
   def RangeAt(from: number): dict<number>
-    var target = n > 0
-        ? T.WordsNextEnd(text, from, n, Pred)
-        : T.WordsPrevStart(text, from, -n, Pred)
-    return {lo: min([from, target]), hi: max([from, target])}
+    var target = count > 0
+        ? T.WordsNextEnd(text, from, count, IsWord)
+        : T.WordsPrevStart(text, from, -count, IsWord)
+    return {start: min([from, target]), end: max([from, target])}
   enddef
   var killed: list<dict<number>> = []
   for sel in ctx.port.GetSelections()
-    var r = RangeAt(sel.active)
-    if r.lo != r.hi
-      add(killed, r)
+    var range = RangeAt(sel.active)
+    if range.start != range.end
+      add(killed, range)
     endif
   endfor
-  sort(killed, (a, b) => a.lo - b.lo)
+  sort(killed, (a, b) => a.start - b.start)
   if empty(killed)
     return
   endif
   var parts: list<string> = []
-  for r in killed
-    add(parts, T.Slice(text, r.lo, r.hi))
+  for range in killed
+    add(parts, T.Slice(text, range.start, range.end))
   endfor
   ctx.clipboard.Write(join(parts, "\n"))
-  def Compute(sel: P.SelRange, _lo: number, _hi: number): dict<any>
-    var r = RangeAt(sel.active)
-    if r.lo == r.hi
+  def Compute(sel: P.SelRange, _start: number, _end: number): dict<any>
+    var range = RangeAt(sel.active)
+    if range.start == range.end
       return {edit: null_object, sel: P.SelRange.new(sel.active, sel.active)}
     endif
-    return {edit: P.TextEdit.new(r.lo, r.hi, ''), sel: P.SelRange.new(r.lo, r.lo)}
+    return {
+      edit: P.TextEdit.new(range.start, range.end, ''),
+      sel: P.SelRange.new(range.start, range.start),
+    }
   enddef
   EditCarets(ctx, Compute)
-  ctx.st.selType = St.SEL_NONE
-  ctx.st.selExpand = false
+  ctx.state.selType = St.SEL_NONE
+  ctx.state.selExpand = false
 enddef
 
 def Undo(ctx: P.Ctx)

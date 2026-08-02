@@ -24,82 +24,82 @@ import autoload 'vimeow/core/regex.vim' as Rx
 
 const SEARCH_RING_LIMIT = 50
 
-export def Push(st: St.MeowState, pattern: string)
+export def Push(state: St.MeowState, pattern: string)
   var kept: list<string> = []
-  for p in st.searchHistory
-    if p != pattern
-      add(kept, p)
+  for previous in state.searchHistory
+    if previous != pattern
+      add(kept, previous)
     endif
   endfor
   add(kept, pattern)
   while len(kept) > SEARCH_RING_LIMIT
     remove(kept, 0)
   endwhile
-  st.searchHistory = kept
+  state.searchHistory = kept
 enddef
 
 def SearchWith(ctx: P.Ctx, pattern: string, backward: bool)
   var text = ctx.port.GetText()
   var caret = Sel.Primary(ctx).active
   var matches = Rx.AllMatches(pattern, text)
-  var m: dict<number> = {}
+  var matched: dict<number> = {}
   if !backward
-    for x in matches
-      if x.start >= caret
-        m = x
+    for candidate in matches
+      if candidate.start >= caret
+        matched = candidate
         break
       endif
     endfor
-    if empty(m) && !empty(matches)
-      m = matches[0]
+    if empty(matched) && !empty(matches)
+      matched = matches[0]
     endif
   else
-    for x in matches
-      if x.stop <= caret
-        m = x
+    for candidate in matches
+      if candidate.stop <= caret
+        matched = candidate
       endif
     endfor
-    if empty(m) && !empty(matches)
-      m = matches[-1]
+    if empty(matched) && !empty(matches)
+      matched = matches[-1]
     endif
   endif
-  if empty(m)
+  if empty(matched)
     ctx.ui.Hint('No match: ' .. pattern)
     return
   endif
   if !backward
-    Sel.Select(ctx, St.SEL_VISIT, m.start, m.stop, false)
+    Sel.Select(ctx, St.SEL_VISIT, matched.start, matched.stop, false)
   else
-    Sel.Select(ctx, St.SEL_VISIT, m.stop, m.start, false)
+    Sel.Select(ctx, St.SEL_VISIT, matched.stop, matched.start, false)
   endif
 enddef
 
 def Search(ctx: P.Ctx)
-  var st = ctx.st
+  var state = ctx.state
   var sel = Sel.Primary(ctx)
-  var pattern = empty(st.searchHistory) ? '' : st.searchHistory[-1]
+  var pattern = empty(state.searchHistory) ? '' : state.searchHistory[-1]
   if Sel.HasSelection(sel)
     var selText = T.Slice(ctx.port.GetText(), sel.Lo(), sel.Hi())
     if len(selText) > 0 && (pattern == '' || !Rx.FullyMatches(pattern, selText))
       pattern = T.RegexQuote(selText)
-      Push(st, pattern)
+      Push(state, pattern)
     endif
   endif
   if pattern == ''
     ctx.ui.Hint('No search pattern')
     return
   endif
-  SearchWith(ctx, pattern, st.TakeCount(1) < 0 || Sel.BackwardP(ctx))
+  SearchWith(ctx, pattern, state.TakeCount(1) < 0 || Sel.BackwardP(ctx))
 enddef
 
 def Visit(ctx: P.Ctx)
-  var backward = ctx.st.TakeCount(1) < 0
+  var backward = ctx.state.TakeCount(1) < 0
   var input = ctx.ui.Input('Visit (regexp):', '')
   if input == ''
     return
   endif
   var pattern = Rx.IsValid(input) ? input : T.RegexQuote(input)
-  Push(ctx.st, pattern)
+  Push(ctx.state, pattern)
   SearchWith(ctx, pattern, backward)
 enddef
 

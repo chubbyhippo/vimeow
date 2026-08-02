@@ -88,11 +88,11 @@ export class MeowState
   public var noremapDepth: number = 0
 
   def TakeCount(fallback: number = 1): number
-    var n = this.pendingCount == 0 ? fallback : this.pendingCount
-    var r = this.negative ? -n : n
+    var count = this.pendingCount == 0 ? fallback : this.pendingCount
+    var signed = this.negative ? -count : count
     this.pendingCount = 0
     this.negative = false
-    return r
+    return signed
   enddef
 
   def HasGrab(): bool

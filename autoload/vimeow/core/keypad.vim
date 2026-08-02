@@ -85,70 +85,70 @@ def Spaced(seq: string): string
   return join(parts, ' ')
 enddef
 
-def Describe(ctx: P.Ctx, c: string)
+def Describe(ctx: P.Ctx, char: string)
   var descsMap = Rc.KeypadDescs()[0]
   var pair = Rc.Keypad()
-  var m = pair[0]
+  var bindings = pair[0]
   var seqs: list<string> = []
   for seq in pair[1]
-    if strpart(seq, 0, len(c)) == c
+    if strpart(seq, 0, len(char)) == char
       add(seqs, seq)
     endif
   endfor
   sort(seqs)
   var lines: list<string> = []
   for seq in seqs
-    var b = m[seq]
-    var target = get(b, 'action', get(b, 'command', get(b, 'keys', '')))
+    var binding = bindings[seq]
+    var target = get(binding, 'action', get(binding, 'command', get(binding, 'keys', '')))
     var desc = has_key(descsMap, seq) ? '  (' .. descsMap[seq] .. ')' : ''
     add(lines, 'SPC ' .. Spaced(seq) .. '  ->  ' .. target .. desc)
   endfor
   var body = join(lines, "\n")
   if body == ''
-    body = 'SPC ' .. c .. ' is undefined'
+    body = 'SPC ' .. char .. ' is undefined'
   endif
-  ctx.ui.Info('Meow Describe: SPC ' .. c, body)
+  ctx.ui.Info('Meow Describe: SPC ' .. char, body)
 enddef
 
 export def Exit(ctx: P.Ctx)
   ctx.ui.HideWhichKey()
-  ctx.SetMode(ctx.st.keypadPreviousState)
+  ctx.SetMode(ctx.state.keypadPreviousState)
 enddef
 
-export def Key(ctx: P.Ctx, c: string)
-  var st = ctx.st
+export def Key(ctx: P.Ctx, char: string)
+  var state = ctx.state
   ctx.ui.HideWhichKey()
   var pair = Rc.Keypad()
-  var m = pair[0]
+  var bindings = pair[0]
   var order = pair[1]
-  var buf = st.keypad
+  var keypadBuffer = state.keypad
 
-  if buf == '/'
-    Describe(ctx, c)
+  if keypadBuffer == '/'
+    Describe(ctx, char)
     Exit(ctx)
     return
   endif
-  if buf == ''
-    if c >= '0' && c <= '9'
-      st.pendingCount = st.pendingCount * 10 + (char2nr(c) - char2nr('0'))
+  if keypadBuffer == ''
+    if char >= '0' && char <= '9'
+      state.pendingCount = state.pendingCount * 10 + (char2nr(char) - char2nr('0'))
       Exit(ctx)
       return
     endif
-    if c == '?'
+    if char == '?'
       Exit(ctx)
       ctx.ui.Info('Meow Cheatsheet', CHEATSHEET)
       return
     endif
-    if c == '/'
-      st.keypad = st.keypad .. '/'
+    if char == '/'
+      state.keypad = state.keypad .. '/'
       return
     endif
   endif
 
-  st.keypad = st.keypad .. c
-  var cur = st.keypad
-  if has_key(m, cur)
-    var binding = m[cur]
+  state.keypad = state.keypad .. char
+  var cur = state.keypad
+  if has_key(bindings, cur)
+    var binding = bindings[cur]
     Exit(ctx)
     Engine.RunBinding(ctx, binding)
     return

@@ -110,11 +110,11 @@ Check('killing the buffer thing empties it', getline(1, '$') == [''])
 # --- the keypad over a real buffer ---------------------------------------
 buf = FreshBuf(['alpha beta'])
 Keys(buf, ' ')
-Check('SPC enters KEYPAD', Adapter.ContextFor(buf).st.mode == St.KEYPAD)
+Check('SPC enters KEYPAD', Adapter.ContextFor(buf).state.mode == St.KEYPAD)
 Keys(buf, 'mf')
 entry = Adapter.ContextFor(buf)
 Check('SPC m f ran forward-word and left KEYPAD',
-      entry.st.mode == St.NORMAL && entry.sels[0].active == 5)
+      entry.state.mode == St.NORMAL && entry.sels[0].active == 5)
 
 # --- the chord layer through the adapter -------------------------------
 buf = FreshBuf(['hello world'])

@@ -24,28 +24,28 @@ const KEYS = 'asdfghjkl'
 
 export const TIMEOUT_MS = 250
 
-export def Subdiv(n: number, b: number): list<number>
-  var p = 0
-  var x1 = 1
-  while x1 * b <= n
-    x1 = x1 * b
-    p += 1
+export def Subdiv(count: number, base: number): list<number>
+  var depth = 0
+  var shallowWidth = 1
+  while shallowWidth * base <= count
+    shallowWidth = shallowWidth * base
+    depth += 1
   endwhile
-  x1 = x1 / b
-  if x1 < 1
-    x1 = 1
+  shallowWidth = shallowWidth / base
+  if shallowWidth < 1
+    shallowWidth = 1
   endif
-  var x2 = b * x1
-  var delta = n - x2
-  var n2 = delta / (x2 - x1)
-  var n1 = b - n2 - 1
+  var deepWidth = base * shallowWidth
+  var delta = count - deepWidth
+  var deepBuckets = delta / (deepWidth - shallowWidth)
+  var shallowBuckets = base - deepBuckets - 1
   var out: list<number> = []
-  for _ in range(n1)
-    add(out, x1)
+  for _ in range(shallowBuckets)
+    add(out, shallowWidth)
   endfor
-  add(out, n - n1 * x1 - n2 * x2)
-  for _ in range(n2)
-    add(out, x2)
+  add(out, count - shallowBuckets * shallowWidth - deepBuckets * deepWidth)
+  for _ in range(deepBuckets)
+    add(out, deepWidth)
   endfor
   return out
 enddef
@@ -78,11 +78,11 @@ enddef
 
 def Labels(node: dict<any>): list<P.AvyLabel>
   var out: list<P.AvyLabel> = []
-  def Walk(n: dict<any>, path: string)
-    if n.kind == 'leaf'
-      add(out, P.AvyLabel.new(n.offset, path))
+  def Walk(subtree: dict<any>, path: string)
+    if subtree.kind == 'leaf'
+      add(out, P.AvyLabel.new(subtree.offset, path))
     else
-      for pair in n.children
+      for pair in subtree.children
         Walk(pair[1], path .. pair[0])
       endfor
     endif
@@ -98,17 +98,17 @@ export def LabelsFor(count: number): list<string>
   var indexed = Labels(Tree(range(count)))
   sort(indexed, (a, b) => a.offset - b.offset)
   var out: list<string> = []
-  for l in indexed
-    add(out, l.label)
+  for label in indexed
+    add(out, label.label)
   endfor
   return out
 enddef
 
 export def LabelsMatching(labelList: list<string>, input: string): list<string>
   var out: list<string> = []
-  for l in labelList
-    if strpart(l, 0, len(input)) == input
-      add(out, l)
+  for label in labelList
+    if strpart(label, 0, len(input)) == input
+      add(out, label)
     endif
   endfor
   return out
@@ -163,7 +163,7 @@ def Jump(ctx: P.Ctx, offset: number)
 enddef
 
 export def Cancel(ctx: P.Ctx)
-  var session = ctx.st.avy
+  var session = ctx.state.avy
   if !empty(session)
     if session.timer >= 0
       ctx.ui.CancelTimer(session.timer)
@@ -171,11 +171,11 @@ export def Cancel(ctx: P.Ctx)
     session.timer = -1
     ctx.ui.ClearAvy()
   endif
-  ctx.st.avy = {}
+  ctx.state.avy = {}
 enddef
 
-export def AwaitingTimeout(st: any): bool
-  return !empty(st.avy) && st.avy.phase == 'collecting' && st.avy.input != ''
+export def AwaitingTimeout(state: any): bool
+  return !empty(state.avy) && state.avy.phase == 'collecting' && state.avy.input != ''
 enddef
 
 def ToSelecting(ctx: P.Ctx, session: dict<any>, candidates: list<number>)
@@ -186,7 +186,7 @@ def ToSelecting(ctx: P.Ctx, session: dict<any>, candidates: list<number>)
 enddef
 
 export def FinishInput(ctx: P.Ctx)
-  var session = ctx.st.avy
+  var session = ctx.state.avy
   if empty(session) || session.phase != 'collecting'
     return
   endif
@@ -206,8 +206,8 @@ export def FinishInput(ctx: P.Ctx)
   endif
 enddef
 
-def Collect(ctx: P.Ctx, session: dict<any>, c: string)
-  session.input = session.input .. c
+def Collect(ctx: P.Ctx, session: dict<any>, char: string)
+  session.input = session.input .. char
   if session.timer >= 0
     ctx.ui.CancelTimer(session.timer)
   endif
@@ -220,19 +220,19 @@ def Collect(ctx: P.Ctx, session: dict<any>, c: string)
   ctx.ui.ShowAvyMatches(ranges)
 enddef
 
-def SelectLabel(ctx: P.Ctx, session: dict<any>, c: string)
-  if session.gotoLine && c >= '0' && c <= '9'
+def SelectLabel(ctx: P.Ctx, session: dict<any>, char: string)
+  if session.gotoLine && char >= '0' && char <= '9'
     Cancel(ctx)
-    var input = ctx.ui.Input('Goto line:', c)
+    var input = ctx.ui.Input('Goto line:', char)
     if input == ''
       return
     endif
     var text = ctx.port.GetText()
-    var ln = T.ParsedLineNumber(input, T.LineCount(text))
-    if ln < 0
+    var line = T.ParsedLineNumber(input, T.LineCount(text))
+    if line < 0
       return
     endif
-    Jump(ctx, T.LineStart(text, ln))
+    Jump(ctx, T.LineStart(text, line))
     return
   endif
   var node = session.node
@@ -241,13 +241,13 @@ def SelectLabel(ctx: P.Ctx, session: dict<any>, c: string)
   endif
   var child: dict<any> = {}
   for pair in node.children
-    if pair[0] == c
+    if pair[0] == char
       child = pair[1]
       break
     endif
   endfor
   if empty(child)
-    ctx.ui.Hint('No such candidate: ' .. c)
+    ctx.ui.Hint('No such candidate: ' .. char)
   elseif child.kind == 'leaf'
     Cancel(ctx)
     Jump(ctx, child.offset)
@@ -257,32 +257,32 @@ def SelectLabel(ctx: P.Ctx, session: dict<any>, c: string)
   endif
 enddef
 
-export def Key(ctx: P.Ctx, c: string)
-  var session = ctx.st.avy
+export def Key(ctx: P.Ctx, char: string)
+  var session = ctx.state.avy
   if empty(session)
     return
   endif
   if session.phase == 'collecting'
-    Collect(ctx, session, c)
+    Collect(ctx, session, char)
   else
-    SelectLabel(ctx, session, c)
+    SelectLabel(ctx, session, char)
   endif
 enddef
 
 def StartCharTimer(ctx: P.Ctx)
   Cancel(ctx)
-  ctx.st.avy = NewSession(false)
+  ctx.state.avy = NewSession(false)
 enddef
 
 def StartGotoLine(ctx: P.Ctx)
   Cancel(ctx)
   var session = NewSession(true)
-  ctx.st.avy = session
+  ctx.state.avy = session
   var text = ctx.port.GetText()
   var vis = VisibleLines(ctx)
   var candidates: list<number> = []
-  for ln in range(vis.first, vis.last)
-    add(candidates, T.LineStart(text, ln))
+  for line in range(vis.first, vis.last)
+    add(candidates, T.LineStart(text, line))
   endfor
   ToSelecting(ctx, session, candidates)
 enddef

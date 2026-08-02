@@ -52,8 +52,8 @@ export class VimEditor implements P.EditorPort
       return [P.SelRange.new(0, 0)]
     endif
     var out: list<P.SelRange> = []
-    for s in ctx.sels
-      add(out, P.SelRange.new(s.anchor, s.active))
+    for sel in ctx.sels
+      add(out, P.SelRange.new(sel.anchor, sel.active))
     endfor
     return out
   enddef
@@ -64,8 +64,8 @@ export class VimEditor implements P.EditorPort
       return
     endif
     var out: list<P.SelRange> = []
-    for s in sels
-      add(out, P.SelRange.new(s.anchor, s.active))
+    for sel in sels
+      add(out, P.SelRange.new(sel.anchor, sel.active))
     endfor
     entry.sels = out
     var win = bufwinid(this.buf)
@@ -84,8 +84,8 @@ export class VimEditor implements P.EditorPort
     var text = this.GetText()
     var sorted = copy(edits)
     sort(sorted, (a, b) => b.start - a.start)
-    for e in sorted
-      text = strpart(text, 0, e.start) .. e.text .. strpart(text, e.end)
+    for edit in sorted
+      text = strpart(text, 0, edit.start) .. edit.text .. strpart(text, edit.end)
     endfor
     var lines = split(text, "\n", true)
     setbufline(this.buf, 1, lines)
@@ -204,20 +204,20 @@ enddef
 
 def BoundKeys(): dict<bool>
   var out: dict<bool> = {' ': true, '-': true}
-  for c in keys(Rc.Defaults().normal)
-    out[c] = true
+  for char in keys(Rc.Defaults().normal)
+    out[char] = true
   endfor
-  for c in keys(Rc.Cfg().normal)
-    out[c] = true
+  for char in keys(Rc.Cfg().normal)
+    out[char] = true
   endfor
-  for c in keys(Rc.Defaults().motion)
-    out[c] = true
+  for char in keys(Rc.Defaults().motion)
+    out[char] = true
   endfor
-  for c in keys(Rc.Cfg().motion)
-    out[c] = true
+  for char in keys(Rc.Cfg().motion)
+    out[char] = true
   endfor
-  for d in range(10)
-    out[string(d)] = true
+  for digit in range(10)
+    out[string(digit)] = true
   endfor
   return out
 enddef
@@ -321,12 +321,12 @@ export def Attach(buf: number): dict<any>
     return {}
   endif
 
-  var st = St.NewState()
+  var state = St.NewState()
   var port = VimEditor.new(buf)
   var ui = Ui.VimUi.new(buf)
-  var ctx = P.Ctx.new(port, VimClipboard.new(), ui, st)
+  var ctx = P.Ctx.new(port, VimClipboard.new(), ui, state)
   contexts[string(buf)] = {
-    ctx: ctx, ui: ui, st: st, port: port,
+    ctx: ctx, ui: ui, state: state, port: port,
     sels: [P.SelRange.new(0, 0)],
   }
 
@@ -337,7 +337,7 @@ export def Attach(buf: number): dict<any>
   if win != -1
     win_execute(win, 'setlocal virtualedit=onemore')
   endif
-  setbufvar(buf, 'vimeow_mode', st.mode)
+  setbufvar(buf, 'vimeow_mode', state.mode)
   SetKeymaps(buf)
 
   augroup vimeow_buf
@@ -346,7 +346,7 @@ export def Attach(buf: number): dict<any>
     execute printf('autocmd BufWipeout,BufDelete <buffer=%d> call vimeow#adapter#OnBufGone(%d)', buf, buf)
   augroup END
 
-  ui.Refresh(st)
+  ui.Refresh(state)
   return contexts[string(buf)]
 enddef
 
@@ -355,9 +355,9 @@ export def OnInsertLeave(buf: number)
   if empty(entry)
     return
   endif
-  if entry.st.mode == St.INSERT
-    entry.st.mode = St.NORMAL
-    entry.ui.Refresh(entry.st)
+  if entry.state.mode == St.INSERT
+    entry.state.mode = St.NORMAL
+    entry.ui.Refresh(entry.state)
   endif
 enddef
 

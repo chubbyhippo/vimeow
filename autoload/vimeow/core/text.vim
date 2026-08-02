@@ -18,14 +18,14 @@ vim9script
 
 export const SENTENCE_ENDERS = '.!?'
 
-export def Clamp(n: number, lo: number, hi: number): number
-  if n < lo
-    return lo
+export def Clamp(value: number, minimum: number, maximum: number): number
+  if value < minimum
+    return minimum
   endif
-  if n > hi
-    return hi
+  if value > maximum
+    return maximum
   endif
-  return n
+  return value
 enddef
 
 export def CharAt(text: string, offset: number): string
@@ -39,8 +39,8 @@ export def Slice(text: string, from: number, to: number = -1): string
   return strpart(text, from, to - from)
 enddef
 
-export def RegexQuote(s: string): string
-  return substitute(s, '[\^\$\.\*\~\[\]\\/]', '\\&', 'g')
+export def RegexQuote(text: string): string
+  return substitute(text, '[\^\$\.\*\~\[\]\\/]', '\\&', 'g')
 enddef
 
 export def LineOfOffset(text: string, offset: number): number
@@ -55,61 +55,61 @@ export def LineStart(text: string, line: number): number
   if line <= 0
     return 0
   endif
-  var ln = 0
+  var linesSeen = 0
   var i = 0
-  var n = len(text)
-  while i < n
+  var length = len(text)
+  while i < length
     if text[i] == "\n"
-      ln += 1
-      if ln == line
+      linesSeen += 1
+      if linesSeen == line
         return i + 1
       endif
     endif
     i += 1
   endwhile
-  return n
+  return length
 enddef
 
 export def LineEnd(text: string, line: number): number
-  var s = LineStart(text, line)
-  var nl = stridx(text, "\n", s)
-  if nl < 0
+  var start = LineStart(text, line)
+  var newline = stridx(text, "\n", start)
+  if newline < 0
     return len(text)
   endif
-  if nl > s && text[nl - 1] == "\r"
-    return nl - 1
+  if newline > start && text[newline - 1] == "\r"
+    return newline - 1
   endif
-  return nl
+  return newline
 enddef
 
 export def IsBlankLine(text: string, line: number): bool
   return Slice(text, LineStart(text, line), LineEnd(text, line)) =~ '^\s*$'
 enddef
 
-def IsWordChar(c: string): bool
-  if c == ''
+def IsWordChar(char: string): bool
+  if char == ''
     return false
   endif
-  return char2nr(c) >= 128 || c =~ '^\w$'
+  return char2nr(char) >= 128 || char =~ '^\w$'
 enddef
 
-export def IsSymbolChar(c: string): bool
-  return IsWordChar(c) || c == '_' || c == '$'
+export def IsSymbolChar(char: string): bool
+  return IsWordChar(char) || char == '_' || char == '$'
 enddef
 
 export def CharPred(symbol: bool): func(string): bool
   return symbol ? IsSymbolChar : IsWordChar
 enddef
 
-def IsSpaceChar(c: string): bool
-  return c != '' && c =~ '^\s$'
+def IsSpaceChar(char: string): bool
+  return char != '' && char =~ '^\s$'
 enddef
 
-def IndexOfChar(text: string, c: string, from: number): number
+def IndexOfChar(text: string, char: string, from: number): number
   var i = from < 0 ? 0 : from
-  var n = len(text)
-  while i < n
-    if text[i] == c
+  var length = len(text)
+  while i < length
+    if text[i] == char
       return i
     endif
     i += 1
@@ -117,10 +117,10 @@ def IndexOfChar(text: string, c: string, from: number): number
   return -1
 enddef
 
-def LastIndexOfChar(text: string, c: string, from: number): number
+def LastIndexOfChar(text: string, char: string, from: number): number
   var i = from > len(text) - 1 ? len(text) - 1 : from
   while i >= 0
-    if text[i] == c
+    if text[i] == char
       return i
     endif
     i -= 1
@@ -129,7 +129,7 @@ def LastIndexOfChar(text: string, c: string, from: number): number
 enddef
 
 export def NthCharTarget(
-    text: string, ch: string, caret: number, n: number,
+    text: string, char: string, caret: number, count: number,
     backward: bool, till: bool): number
   var found = -1
   var from = 0
@@ -142,8 +142,8 @@ export def NthCharTarget(
   else
     from = caret
   endif
-  for _ in range(n)
-    found = backward ? LastIndexOfChar(text, ch, from) : IndexOfChar(text, ch, from)
+  for _ in range(count)
+    found = backward ? LastIndexOfChar(text, char, from) : IndexOfChar(text, char, from)
     if found < 0
       return -1
     endif
@@ -158,14 +158,14 @@ export def NthCharTarget(
   return till ? found : found + 1
 enddef
 
-def IsSentenceEnder(c: string): bool
-  return c != '' && stridx(SENTENCE_ENDERS, c) >= 0
+def IsSentenceEnder(char: string): bool
+  return char != '' && stridx(SENTENCE_ENDERS, char) >= 0
 enddef
 
-export def NextSentenceEnd(text: string, from: number, n: number): number
+export def NextSentenceEnd(text: string, from: number, count: number): number
   var i = Clamp(from, 0, len(text))
   var last = len(text)
-  for _ in range(n)
+  for _ in range(count)
     while i < last && !IsSentenceEnder(CharAt(text, i))
       i += 1
     endwhile
@@ -179,10 +179,10 @@ export def NextSentenceEnd(text: string, from: number, n: number): number
   return i
 enddef
 
-export def PrevSentenceStart(text: string, from: number, n: number): number
-  var IsGap = (c: string): bool => IsSpaceChar(c) || IsSentenceEnder(c)
+export def PrevSentenceStart(text: string, from: number, count: number): number
+  var IsGap = (char: string): bool => IsSpaceChar(char) || IsSentenceEnder(char)
   var i = Clamp(from, 0, len(text))
-  for _ in range(n)
+  for _ in range(count)
     while i > 0 && IsGap(CharAt(text, i - 1))
       i -= 1
     endwhile
@@ -201,19 +201,19 @@ def LineStartAt(text: string, offset: number): number
   return i
 enddef
 
-def FollowingLineStart(text: string, bol: number): number
-  var i = bol
-  var n = len(text)
-  while i < n && text[i] != "\n"
+def FollowingLineStart(text: string, lineStartOffset: number): number
+  var i = lineStartOffset
+  var length = len(text)
+  while i < length && text[i] != "\n"
     i += 1
   endwhile
-  return i < n ? i + 1 : i
+  return i < length ? i + 1 : i
 enddef
 
-def BlankLineAt(text: string, bol: number): bool
-  var i = bol
-  var n = len(text)
-  while i < n && text[i] != "\n"
+def BlankLineAt(text: string, lineStartOffset: number): bool
+  var i = lineStartOffset
+  var length = len(text)
+  while i < length && text[i] != "\n"
     if !IsSpaceChar(CharAt(text, i))
       return false
     endif
@@ -222,10 +222,10 @@ def BlankLineAt(text: string, bol: number): bool
   return true
 enddef
 
-export def NextParagraphEnd(text: string, from: number, n: number): number
+export def NextParagraphEnd(text: string, from: number, count: number): number
   var pos = Clamp(from, 0, len(text))
   var last = len(text)
-  for _ in range(n)
+  for _ in range(count)
     var i = LineStartAt(text, pos)
     while i < last && BlankLineAt(text, i)
       i = FollowingLineStart(text, i)
@@ -250,9 +250,9 @@ def ParagraphStartBefore(text: string, offset: number): number
   return prevLineEmpty ? i - 1 : i
 enddef
 
-export def PrevParagraphStart(text: string, from: number, n: number): number
+export def PrevParagraphStart(text: string, from: number, count: number): number
   var pos = Clamp(from, 0, len(text))
-  for _ in range(n)
+  for _ in range(count)
     if pos > 0
       var start = ParagraphStartBefore(text, pos)
       pos = start < pos ? start : ParagraphStartBefore(text, start - 1)
@@ -270,78 +270,84 @@ export def ParsedLineNumber(input: string, lineCount: number): number
   return Clamp(str2nr(digits) - 1, 0, maxLine)
 enddef
 
-export def WordsNextEnd(text: string, from: number, n: number, Pred: func(string): bool): number
+export def WordsNextEnd(
+    text: string, from: number, count: number, IsWord: func(string): bool): number
   var i = Clamp(from, 0, len(text))
   var last = len(text)
-  for _ in range(n)
-    while i < last && !Pred(CharAt(text, i))
+  for _ in range(count)
+    while i < last && !IsWord(CharAt(text, i))
       i += 1
     endwhile
-    while i < last && Pred(CharAt(text, i))
+    while i < last && IsWord(CharAt(text, i))
       i += 1
     endwhile
   endfor
   return i
 enddef
 
-export def WordsPrevStart(text: string, from: number, n: number, Pred: func(string): bool): number
+export def WordsPrevStart(
+    text: string, from: number, count: number, IsWord: func(string): bool): number
   var i = Clamp(from, 0, len(text))
-  for _ in range(n)
-    while i > 0 && !Pred(CharAt(text, i - 1))
+  for _ in range(count)
+    while i > 0 && !IsWord(CharAt(text, i - 1))
       i -= 1
     endwhile
-    while i > 0 && Pred(CharAt(text, i - 1))
+    while i > 0 && IsWord(CharAt(text, i - 1))
       i -= 1
     endwhile
   endfor
   return i
 enddef
 
-export def WordsMove(text: string, from: number, n: number, Pred: func(string): bool): number
-  if n >= 0
-    return WordsNextEnd(text, from, n, Pred)
+export def WordsMove(
+    text: string, from: number, count: number, IsWord: func(string): bool): number
+  if count >= 0
+    return WordsNextEnd(text, from, count, IsWord)
   endif
-  return WordsPrevStart(text, from, -n, Pred)
+  return WordsPrevStart(text, from, -count, IsWord)
 enddef
 
-export def WordsSpanAt(text: string, offset: number, Pred: func(string): bool): list<number>
-  var s = offset
-  var e = offset
+export def WordsSpanAt(text: string, offset: number, IsWord: func(string): bool): list<number>
+  var start = offset
+  var end = offset
   var last = len(text)
-  while s > 0 && Pred(CharAt(text, s - 1))
-    s -= 1
+  while start > 0 && IsWord(CharAt(text, start - 1))
+    start -= 1
   endwhile
-  while e < last && Pred(CharAt(text, e))
-    e += 1
+  while end < last && IsWord(CharAt(text, end))
+    end += 1
   endwhile
-  return [s, e]
+  return [start, end]
 enddef
 
-export def WordsBoundsAt(text: string, offset: number, Pred: func(string): bool): list<number>
-  var o = offset
+def OffsetInWord(text: string, offset: number, IsWord: func(string): bool): number
   var last = len(text)
-  if o >= last || !Pred(CharAt(text, o))
-    if o > 0 && Pred(CharAt(text, o - 1))
-      o -= 1
-    else
-      var f = o
-      while f < last && !Pred(CharAt(text, f))
-        f += 1
-      endwhile
-      if f >= last
-        return []
-      endif
-      o = f
-    endif
+  if offset < last && IsWord(CharAt(text, offset))
+    return offset
   endif
-  return WordsSpanAt(text, o, Pred)
+  if offset > 0 && IsWord(CharAt(text, offset - 1))
+    return offset - 1
+  endif
+  var scan = offset
+  while scan < last && !IsWord(CharAt(text, scan))
+    scan += 1
+  endwhile
+  return scan < last ? scan : -1
+enddef
+
+export def WordsBoundsAt(text: string, offset: number, IsWord: func(string): bool): list<number>
+  var inWord = OffsetInWord(text, offset, IsWord)
+  if inWord < 0
+    return []
+  endif
+  return WordsSpanAt(text, inWord, IsWord)
 enddef
 
 export def WordsFixSelectionMark(
-    text: string, pos: number, mark: number, Pred: func(string): bool): number
+    text: string, pos: number, mark: number, IsWord: func(string): bool): number
   var probeMax = len(text) - 1 < 0 ? 0 : len(text) - 1
   var probe = Clamp(mark > pos ? pos : pos - 1, 0, probeMax)
-  var bounds = WordsBoundsAt(text, probe, Pred)
+  var bounds = WordsBoundsAt(text, probe, IsWord)
   if empty(bounds)
     return mark
   endif
@@ -351,6 +357,14 @@ export def WordsFixSelectionMark(
   return mark > bounds[0] ? mark : bounds[0]
 enddef
 
-export def IsBlank(ch: string): bool
-  return ch == ' ' || ch == "\t"
+export def IsBlank(char: string): bool
+  return char == ' ' || char == "\t"
+enddef
+
+export def FirstNonBlankOffset(text: string, from: number, stop: number): number
+  var at = from
+  while at < stop && IsBlank(CharAt(text, at))
+    at += 1
+  endwhile
+  return at
 enddef

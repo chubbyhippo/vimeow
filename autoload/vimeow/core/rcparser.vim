@@ -60,56 +60,56 @@ export def NewConfig(): dict<any>
   }
 enddef
 
-def OrderedSet(m: dict<any>, order: list<string>, key: string, value: any)
-  if !has_key(m, key)
+def OrderedSet(entries: dict<any>, order: list<string>, key: string, value: any)
+  if !has_key(entries, key)
     add(order, key)
   endif
-  m[key] = value
+  entries[key] = value
 enddef
 
 def CommentStart(line: string): number
   var depth = 0
   for i in range(len(line))
-    var ch = line[i]
-    if ch == '('
+    var char = line[i]
+    if char == '('
       depth += 1
-    elseif ch == ')'
+    elseif char == ')'
       if depth > 0
         depth -= 1
       endif
-    elseif ch == '"' && depth == 0 && i > 0 && line[i - 1] =~ '\s'
+    elseif char == '"' && depth == 0 && i > 0 && line[i - 1] =~ '\s'
       return i
     endif
   endfor
   return -1
 enddef
 
-def ParseKeys(s: string, Err: func(string)): string
+def ParseKeys(spec: string, Err: func(string)): string
   var out: list<string> = []
   var i = 0
-  var n = len(s)
-  while i < n
-    var ch = s[i]
-    if ch == '<'
-      var close = stridx(s, '>', i)
+  var length = len(spec)
+  while i < length
+    var char = spec[i]
+    if char == '<'
+      var close = stridx(spec, '>', i)
       if close < 0
-        add(out, ch)
+        add(out, char)
         i += 1
       else
-        var token = tolower(strpart(s, i + 1, close - i - 1))
+        var token = tolower(strpart(spec, i + 1, close - i - 1))
         if token == 'space'
           add(out, ' ')
         elseif token == 'lt'
           add(out, '<')
         else
-          Err('unsupported key token ' .. strpart(s, i, close - i + 1)
+          Err('unsupported key token ' .. strpart(spec, i, close - i + 1)
               .. ' (only printable keys reach the meow engine)')
           return null_string
         endif
         i = close + 1
       endif
     else
-      add(out, ch)
+      add(out, char)
       i += 1
     endif
   endwhile
@@ -147,7 +147,7 @@ def ParseHexColor(text: string): string
   return '#' .. tolower(hex)
 enddef
 
-def ParseSetColor(c: dict<any>, rest: string, Err: func(string))
+def ParseSetColor(config: dict<any>, rest: string, Err: func(string))
   var key = trim(matchstr(rest, '^[^=]*'))
   var field = get(COLOR_SET_KEYS, key, '')
   if field == ''
@@ -159,14 +159,14 @@ def ParseSetColor(c: dict<any>, rest: string, Err: func(string))
     Err('set ' .. key .. ": invalid color '" .. value .. "' (expected #RRGGBB)")
     return
   endif
-  c[field] = color
+  config[field] = color
 enddef
 
-def ParseSet(c: dict<any>, rest: string, Err: func(string))
+def ParseSet(config: dict<any>, rest: string, Err: func(string))
   if rest == 'which-key'
-    c.whichKey = true
+    config.whichKey = true
   elseif rest == 'nowhich-key'
-    c.whichKey = false
+    config.whichKey = false
   elseif strpart(rest, 0, 10) == 'timeoutlen'
     var digits = ''
     if stridx(rest, '=') >= 0
@@ -175,14 +175,14 @@ def ParseSet(c: dict<any>, rest: string, Err: func(string))
       digits = matchstr(rest, '^\S\+\s\+\zs-\?\d\+\ze\s*$')
     endif
     if digits != '' && str2nr(digits) >= 0
-      c.whichKeyDelayMs = str2nr(digits)
+      config.whichKeyDelayMs = str2nr(digits)
     endif
   else
-    ParseSetColor(c, rest, Err)
+    ParseSetColor(config, rest, Err)
   endif
 enddef
 
-def ParseDescBody(c: dict<any>, body: string, Err: func(string))
+def ParseDescBody(config: dict<any>, body: string, Err: func(string))
   if strpart(body, 0, 8) != '<leader>'
     Err('descriptions must start with <leader>: ' .. body)
     return
@@ -198,10 +198,10 @@ def ParseDescBody(c: dict<any>, body: string, Err: func(string))
     Err('empty key sequence in description: ' .. body)
     return
   endif
-  OrderedSet(c.keypadDesc, c.keypadDescOrder, seq, desc)
+  OrderedSet(config.keypadDesc, config.keypadDescOrder, seq, desc)
 enddef
 
-def ParseChordLine(c: dict<any>, cmd: string, rest: string, Err: func(string))
+def ParseChordLine(config: dict<any>, cmd: string, rest: string, Err: func(string))
   var split = match(rest, '\s\+\S*$')
   if split <= 0
     Err(cmd .. ' needs a chord and a target')
@@ -217,10 +217,10 @@ def ParseChordLine(c: dict<any>, cmd: string, rest: string, Err: func(string))
   if empty(binding)
     return
   endif
-  OrderedSet(c.chords, c.chordOrder, Chord.Spelling(chord), binding)
+  OrderedSet(config.chords, config.chordOrder, Chord.Spelling(chord), binding)
 enddef
 
-def ParseResizeKey(c: dict<any>, cmd: string, rest: string, Err: func(string))
+def ParseResizeKey(config: dict<any>, cmd: string, rest: string, Err: func(string))
   var lhs = matchstr(rest, '^\S\+')
   var rhs = trim(strpart(rest, len(lhs)))
   if lhs == '' || rhs == ''
@@ -239,10 +239,10 @@ def ParseResizeKey(c: dict<any>, cmd: string, rest: string, Err: func(string))
   if empty(binding)
     return
   endif
-  OrderedSet(c.resizes, c.resizeOrder, key, binding)
+  OrderedSet(config.resizes, config.resizeOrder, key, binding)
 enddef
 
-def ParseMap(c: dict<any>, cmd: string, rest: string, Err: func(string))
+def ParseMap(config: dict<any>, cmd: string, rest: string, Err: func(string))
   var lhs = matchstr(rest, '^\S\+')
   var rhs = trim(strpart(rest, len(lhs)))
   if lhs == '' || rhs == ''
@@ -271,7 +271,7 @@ def ParseMap(c: dict<any>, cmd: string, rest: string, Err: func(string))
     elseif stridx('0123456789?/', seq[0]) >= 0
       Err('keypad ' .. seq[0] .. ' is reserved (digit argument / cheatsheet / describe)')
     else
-      OrderedSet(c.keypad, c.keypadOrder, seq, binding)
+      OrderedSet(config.keypad, config.keypadOrder, seq, binding)
     endif
     return
   endif
@@ -286,14 +286,14 @@ def ParseMap(c: dict<any>, cmd: string, rest: string, Err: func(string))
     Err('SPC is the keypad key and cannot be remapped')
   else
     if motion
-      c.motion[keys] = binding
+      config.motion[keys] = binding
     else
-      c.normal[keys] = binding
+      config.normal[keys] = binding
     endif
   endif
 enddef
 
-def ParseRepeat(c: dict<any>, rest: string, Err: func(string))
+def ParseRepeat(config: dict<any>, rest: string, Err: func(string))
   var parts = matchlist(rest, '^\(\S\+\)\s\+\(\S\+\)\s\+\(.*\)$')
   if empty(parts)
     Err('repeat needs a group, a member key and a target')
@@ -318,43 +318,43 @@ def ParseRepeat(c: dict<any>, rest: string, Err: func(string))
   if empty(binding)
     return
   endif
-  if !has_key(c.repeatGroups, group)
-    add(c.repeatOrder, group)
-    c.repeatGroups[group] = {map: {}, order: []}
+  if !has_key(config.repeatGroups, group)
+    add(config.repeatOrder, group)
+    config.repeatGroups[group] = {map: {}, order: []}
   endif
-  var members = c.repeatGroups[group]
+  var members = config.repeatGroups[group]
   OrderedSet(members.map, members.order, key, binding)
 enddef
 
-def ParseCommand(c: dict<any>, cmd: string, rest: string, Err: func(string))
+def ParseCommand(config: dict<any>, cmd: string, rest: string, Err: func(string))
   if get(ACCEPTED_AND_IGNORED_COMMANDS, cmd, false)
     return
   endif
   if get(MAP_COMMANDS, cmd, false)
-    ParseMap(c, cmd, rest, Err)
+    ParseMap(config, cmd, rest, Err)
   elseif cmd == 'cmap' || cmd == 'cnoremap'
-    ParseChordLine(c, cmd, rest, Err)
+    ParseChordLine(config, cmd, rest, Err)
   elseif cmd == 'resizemap' || cmd == 'resizenoremap'
-    ParseResizeKey(c, cmd, rest, Err)
+    ParseResizeKey(config, cmd, rest, Err)
   elseif cmd == 'set'
-    ParseSet(c, rest, Err)
+    ParseSet(config, rest, Err)
   elseif cmd == 'desc'
-    ParseDescBody(c, rest, Err)
+    ParseDescBody(config, rest, Err)
   elseif cmd == 'repeat'
-    ParseRepeat(c, rest, Err)
+    ParseRepeat(config, rest, Err)
   else
     Err("unknown command '" .. cmd .. "'")
   endif
 enddef
 
-def ParseLine(c: dict<any>, raw: string, Err: func(string))
+def ParseLine(config: dict<any>, raw: string, Err: func(string))
   var line = raw
   if line == '' || line[0] == '"' || line[0] == '#'
     return
   endif
   var whichKeyDesc = matchstr(line, WHICH_KEY_DESC_PATTERN)
   if whichKeyDesc != ''
-    ParseDescBody(c, whichKeyDesc, Err)
+    ParseDescBody(config, whichKeyDesc, Err)
     return
   endif
   var cut = CommentStart(line)
@@ -365,19 +365,19 @@ def ParseLine(c: dict<any>, raw: string, Err: func(string))
     return
   endif
   var cmd = matchstr(line, '^\S\+')
-  ParseCommand(c, cmd, trim(strpart(line, len(cmd))), Err)
+  ParseCommand(config, cmd, trim(strpart(line, len(cmd))), Err)
 enddef
 
 export def Parse(lines: list<string>): dict<any>
-  var c = NewConfig()
+  var config = NewConfig()
   var i = 0
   for raw in lines
     i += 1
     var lineNo = i
     var Err = (msg: string) => {
-      add(c.errors, 'line ' .. lineNo .. ': ' .. msg)
+      add(config.errors, 'line ' .. lineNo .. ': ' .. msg)
     }
-    ParseLine(c, trim(raw), Err)
+    ParseLine(config, trim(raw), Err)
   endfor
-  return c
+  return config
 enddef

@@ -36,7 +36,7 @@ export const THINGS = [
 export def KeypadRows(buffer: string): list<list<string>>
   var descs = Rc.KeypadDescs()[0]
   var pair = Rc.Keypad()
-  var m = pair[0]
+  var bindings = pair[0]
   var order = pair[1]
   var rows: dict<string> = {}
   var rowOrder: list<string> = []
@@ -47,8 +47,8 @@ export def KeypadRows(buffer: string): list<list<string>>
       if seq == child
         label = get(descs, seq, '')
         if label == ''
-          var b = m[seq]
-          label = get(b, 'action', get(b, 'command', get(b, 'keys', '')))
+          var binding = bindings[seq]
+          label = get(binding, 'action', get(binding, 'command', get(binding, 'keys', '')))
         endif
       else
         label = get(descs, child, '+more')

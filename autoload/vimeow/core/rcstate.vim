@@ -19,51 +19,51 @@ vim9script
 var state: string = ''
 var saved: bool = false
 
-def Esc(s: string): string
-  return substitute(s, '[%|;&]', '\=printf("%%%d", char2nr(submatch(0)))', 'g')
+def Esc(text: string): string
+  return substitute(text, '[%|;&]', '\=printf("%%%d", char2nr(submatch(0)))', 'g')
 enddef
 
-def BindingRepr(b: dict<any>): string
+def BindingRepr(binding: dict<any>): string
   return join([
-    'a=' .. Esc(get(b, 'action', '')),
-    'k=' .. Esc(get(b, 'keys', '')),
-    'c=' .. Esc(get(b, 'command', '')),
-    'r=' .. string(get(b, 'recursive', false)),
+    'a=' .. Esc(get(binding, 'action', '')),
+    'k=' .. Esc(get(binding, 'keys', '')),
+    'c=' .. Esc(get(binding, 'command', '')),
+    'r=' .. string(get(binding, 'recursive', false)),
   ], ',')
 enddef
 
-def MapRepr(m: dict<any>, ValueRepr: func(any): string): string
+def MapRepr(entries: dict<any>, ValueRepr: func(any): string): string
   var parts: list<string> = []
-  for k in sort(keys(m))
-    add(parts, Esc(k) .. '=>' .. ValueRepr(m[k]))
+  for key in sort(keys(entries))
+    add(parts, Esc(key) .. '=>' .. ValueRepr(entries[key]))
   endfor
   return join(parts, ';')
 enddef
 
-def Serialize(c: dict<any>): string
+def Serialize(config: dict<any>): string
   var parts = [
-    MapRepr(c.normal, BindingRepr),
-    MapRepr(c.motion, BindingRepr),
-    MapRepr(c.keypad, BindingRepr),
-    MapRepr(c.keypadDesc, (v) => Esc(v)),
+    MapRepr(config.normal, BindingRepr),
+    MapRepr(config.motion, BindingRepr),
+    MapRepr(config.keypad, BindingRepr),
+    MapRepr(config.keypadDesc, (v) => Esc(v)),
   ]
   var groups: list<string> = []
-  for g in sort(keys(c.repeatGroups))
-    add(groups, Esc(g) .. '=>' .. MapRepr(c.repeatGroups[g].map, BindingRepr))
+  for group in sort(keys(config.repeatGroups))
+    add(groups, Esc(group) .. '=>' .. MapRepr(config.repeatGroups[group].map, BindingRepr))
   endfor
   add(parts, join(groups, '&'))
-  add(parts, string(c.whichKey))
-  add(parts, string(c.whichKeyDelayMs))
+  add(parts, string(config.whichKey))
+  add(parts, string(config.whichKeyDelayMs))
   return join(parts, '|')
 enddef
 
-export def SaveParsed(c: dict<any>)
-  state = Serialize(c)
+export def SaveParsed(config: dict<any>)
+  state = Serialize(config)
   saved = true
 enddef
 
-export def EqualTo(c: dict<any>): bool
-  return saved && Serialize(c) == state
+export def EqualTo(config: dict<any>): bool
+  return saved && Serialize(config) == state
 enddef
 
 export def ResetForTest()

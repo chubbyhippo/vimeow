@@ -24,8 +24,8 @@ export const RECENTER_COMMAND = 'recenter-top-bottom'
 export const RECENTER_POSITIONS = [P.REVEAL_CENTER, P.REVEAL_TOP, P.REVEAL_BOTTOM]
 
 export def RecenterPosition(phase: number): string
-  var n = len(RECENTER_POSITIONS)
-  return RECENTER_POSITIONS[((phase % n) + n) % n]
+  var total = len(RECENTER_POSITIONS)
+  return RECENTER_POSITIONS[((phase % total) + total) % total]
 enddef
 
 export def NextRecenterPhase(previousCommand: string, phase: number): number
@@ -33,9 +33,9 @@ export def NextRecenterPhase(previousCommand: string, phase: number): number
 enddef
 
 def Recenter(ctx: P.Ctx)
-  ctx.st.recenterPhase = NextRecenterPhase(ctx.st.lastCommand, ctx.st.recenterPhase)
-  ctx.st.lastCommand = RECENTER_COMMAND
-  ctx.ui.RevealCaret(RecenterPosition(ctx.st.recenterPhase))
+  ctx.state.recenterPhase = NextRecenterPhase(ctx.state.lastCommand, ctx.state.recenterPhase)
+  ctx.state.lastCommand = RECENTER_COMMAND
+  ctx.ui.RevealCaret(RecenterPosition(ctx.state.recenterPhase))
 enddef
 
 export def Commands(): dict<func>

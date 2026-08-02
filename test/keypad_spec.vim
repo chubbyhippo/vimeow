@@ -25,7 +25,7 @@ H.Describe('ModesKeypadSpec', () => {
     s.Given('word', '<caret>hello')
     s.WhenKeys(' x')
     s.ThenMode(St.KEYPAD)
-    H.Eq(s.st.keypad, 'x', 'keypad buffer')
+    H.Eq(s.state.keypad, 'x', 'keypad buffer')
   })
 
   H.It('given a keypad action entry then the host command runs', () => {
@@ -86,7 +86,7 @@ H.Describe('ModesKeypadSpec', () => {
     s.ThenMode(St.INSERT)
     Engine.EnterKeypad(s.Ctx())
     s.ThenMode(St.KEYPAD)
-    H.Eq(s.st.keypadPreviousState, St.INSERT, 'keypad remembers INSERT')
+    H.Eq(s.state.keypadPreviousState, St.INSERT, 'keypad remembers INSERT')
     s.WhenKeys('mf')
     s.ThenMode(St.INSERT)
   })

@@ -26,12 +26,12 @@ import autoload 'vimeow/core/regex.vim' as Rx
 const MAX_GRAB_SYNC_MATCHES = 500
 
 export def Clear(ctx: P.Ctx)
-  ctx.st.grab = {}
+  ctx.state.grab = {}
   ctx.ui.SetGrabHighlight(null_object)
 enddef
 
 def Set(ctx: P.Ctx, start: number, stop: number)
-  ctx.st.grab = {start: start, stop: stop}
+  ctx.state.grab = {start: start, stop: stop}
   if stop > start
     ctx.ui.SetGrabHighlight(P.OffsetRange.new(start, stop))
   else
@@ -39,31 +39,31 @@ def Set(ctx: P.Ctx, start: number, stop: number)
   endif
 enddef
 
-export def AdjustForEdits(st: St.MeowState, edits: list<P.TextEdit>)
-  if empty(st.grab)
+export def AdjustForEdits(state: St.MeowState, edits: list<P.TextEdit>)
+  if empty(state.grab)
     return
   endif
-  var g = st.grab
+  var grabbed = state.grab
   var sorted = copy(edits)
   sort(sorted, (a, b) => b.start - a.start)
-  for e in sorted
-    var delta = len(e.text) - (e.end - e.start)
-    if g.start >= e.end
-      g.start += delta
-      g.stop += delta
+  for edit in sorted
+    var delta = len(edit.text) - (edit.end - edit.start)
+    if grabbed.start >= edit.end
+      grabbed.start += delta
+      grabbed.stop += delta
     else
-      if g.stop >= e.end
-        g.stop += delta
-      elseif g.stop > e.start
-        g.stop = e.start
+      if grabbed.stop >= edit.end
+        grabbed.stop += delta
+      elseif grabbed.stop > edit.start
+        grabbed.stop = edit.start
       endif
-      if g.start > e.start
-        g.start = e.start
+      if grabbed.start > edit.start
+        grabbed.start = edit.start
       endif
     endif
   endfor
-  if g.stop < g.start
-    g.stop = g.start
+  if grabbed.stop < grabbed.start
+    grabbed.stop = grabbed.start
   endif
 enddef
 
@@ -92,9 +92,9 @@ def Swap(ctx: P.Ctx)
     return
   endif
   var port = ctx.port
-  var st = ctx.st
+  var state = ctx.state
   var sel = Sel.Primary(ctx)
-  if empty(st.grab)
+  if empty(state.grab)
     ctx.ui.Hint('No grab')
     return
   endif
@@ -102,39 +102,43 @@ def Swap(ctx: P.Ctx)
     ctx.ui.Hint('meow-swap-grab needs a selection')
     return
   endif
-  var gs = st.grab.start
-  var ge = st.grab.stop
-  var ss = sel.Lo()
-  var se = sel.Hi()
-  if max([gs, ss]) < min([ge, se]) && !(gs == ss && ge == se)
+  var grabStart = state.grab.start
+  var grabEnd = state.grab.stop
+  var selStart = sel.Lo()
+  var selEnd = sel.Hi()
+  if max([grabStart, selStart]) < min([grabEnd, selEnd])
+      && !(grabStart == selStart && grabEnd == selEnd)
     ctx.ui.Hint('Selection overlaps the grab')
     return
   endif
   var text = port.GetText()
-  var grabText = T.Slice(text, gs, ge)
-  var selText = T.Slice(text, ss, se)
-  st.grab = {}
-  port.Edit([P.TextEdit.new(ss, se, grabText), P.TextEdit.new(gs, ge, selText)])
-  if gs <= ss
-    var delta = len(selText) - (ge - gs)
-    Set(ctx, gs, gs + len(selText))
-    var caret = ss + delta + len(grabText)
+  var grabText = T.Slice(text, grabStart, grabEnd)
+  var selText = T.Slice(text, selStart, selEnd)
+  state.grab = {}
+  port.Edit([
+    P.TextEdit.new(selStart, selEnd, grabText),
+    P.TextEdit.new(grabStart, grabEnd, selText),
+  ])
+  if grabStart <= selStart
+    var delta = len(selText) - (grabEnd - grabStart)
+    Set(ctx, grabStart, grabStart + len(selText))
+    var caret = selStart + delta + len(grabText)
     port.SetSelections([P.SelRange.new(caret, caret)])
   else
-    var delta = len(grabText) - (se - ss)
-    Set(ctx, gs + delta, gs + delta + len(selText))
-    var caret = ss + len(grabText)
+    var delta = len(grabText) - (selEnd - selStart)
+    Set(ctx, grabStart + delta, grabStart + delta + len(selText))
+    var caret = selStart + len(grabText)
     port.SetSelections([P.SelRange.new(caret, caret)])
   endif
-  st.selType = St.SEL_NONE
+  state.selType = St.SEL_NONE
 enddef
 
 export def Pop(ctx: P.Ctx): bool
-  if empty(ctx.st.grab)
+  if empty(ctx.state.grab)
     return false
   endif
-  var start = ctx.st.grab.start
-  var stop = ctx.st.grab.stop
+  var start = ctx.state.grab.start
+  var stop = ctx.state.grab.stop
   Clear(ctx)
   Sel.Select(ctx, St.SEL_TRANSIENT, start, stop, false)
   return true
@@ -142,39 +146,39 @@ enddef
 
 export def Beacon(ctx: P.Ctx)
   var port = ctx.port
-  var st = ctx.st
-  if empty(st.grab) || st.grab.stop <= st.grab.start
+  var state = ctx.state
+  if empty(state.grab) || state.grab.stop <= state.grab.start
     return
   endif
-  var gStart = st.grab.start
-  var gStop = st.grab.stop
+  var grabStart = state.grab.start
+  var grabEnd = state.grab.stop
   var sel = Sel.Primary(ctx)
   if !Sel.HasSelection(sel)
     return
   endif
-  var ss = sel.Lo()
-  var se = sel.Hi()
-  if ss < gStart || se > gStop || se == ss
+  var selStart = sel.Lo()
+  var selEnd = sel.Hi()
+  if selStart < grabStart || selEnd > grabEnd || selEnd == selStart
     return
   endif
   var text = port.GetText()
   var sels: list<P.SelRange> = []
   if index([St.SEL_WORD, St.SEL_SYMBOL, St.SEL_VISIT,
-            St.SEL_FIND, St.SEL_TILL, St.SEL_CHAR], st.selType) >= 0
-    var selText = T.Slice(text, ss, se)
+            St.SEL_FIND, St.SEL_TILL, St.SEL_CHAR], state.selType) >= 0
+    var selText = T.Slice(text, selStart, selEnd)
     if selText =~ '^\s*$'
       return
     endif
-    var bounded = st.selType == St.SEL_WORD || st.selType == St.SEL_SYMBOL
+    var bounded = state.selType == St.SEL_WORD || state.selType == St.SEL_SYMBOL
     var quoted = T.RegexQuote(selText)
     var pattern = bounded ? '\<' .. quoted .. '\>' : quoted
-    var region = T.Slice(text, gStart, gStop)
+    var region = T.Slice(text, grabStart, grabEnd)
     var added = 0
-    for m in Rx.AllMatches(pattern, region)
-      var s0 = gStart + m.start
-      var e0 = gStart + m.stop
-      if s0 != ss
-        add(sels, P.SelRange.new(s0, e0))
+    for match in Rx.AllMatches(pattern, region)
+      var matchStart = grabStart + match.start
+      var matchEnd = grabStart + match.stop
+      if matchStart != selStart
+        add(sels, P.SelRange.new(matchStart, matchEnd))
         added += 1
         if added >= MAX_GRAB_SYNC_MATCHES
           break
@@ -184,15 +188,15 @@ export def Beacon(ctx: P.Ctx)
     if empty(sels)
       return
     endif
-    insert(sels, P.SelRange.new(ss, se), 0)
-  elseif st.selType == St.SEL_LINE
-    var first = T.LineOfOffset(text, gStart)
-    var last = T.LineOfOffset(text, max([gStop - 1, gStart]))
+    insert(sels, P.SelRange.new(selStart, selEnd), 0)
+  elseif state.selType == St.SEL_LINE
+    var first = T.LineOfOffset(text, grabStart)
+    var last = T.LineOfOffset(text, max([grabEnd - 1, grabStart]))
     if last <= first
       return
     endif
-    for ln in range(first, last)
-      add(sels, P.SelRange.new(T.LineStart(text, ln), T.LineEnd(text, ln)))
+    for line in range(first, last)
+      add(sels, P.SelRange.new(T.LineStart(text, line), T.LineEnd(text, line)))
     endfor
   else
     return

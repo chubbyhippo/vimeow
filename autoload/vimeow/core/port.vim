@@ -106,8 +106,8 @@ export interface UiPort
   def ShowAvyLabels(labels: list<AvyLabel>)
   def ClearAvy()
   def SetGrabHighlight(range: OffsetRange)
-  def ModeChanged(st: St.MeowState)
-  def Refresh(st: St.MeowState)
+  def ModeChanged(state: St.MeowState)
+  def Refresh(state: St.MeowState)
   def StartTimer(ms: number, Cb: func): number
   def CancelTimer(id: number)
 endinterface
@@ -116,16 +116,16 @@ export class Ctx
   var port: EditorPort
   var clipboard: ClipboardPort
   var ui: UiPort
-  var st: St.MeowState
+  var state: St.MeowState
 
-  def new(this.port, this.clipboard, this.ui, this.st)
+  def new(this.port, this.clipboard, this.ui, this.state)
   enddef
 
   def SetMode(mode: string)
-    this.st.mode = mode
+    this.state.mode = mode
     if mode != St.KEYPAD
-      this.st.keypad = ''
+      this.state.keypad = ''
     endif
-    this.ui.ModeChanged(this.st)
+    this.ui.ModeChanged(this.state)
   enddef
 endclass

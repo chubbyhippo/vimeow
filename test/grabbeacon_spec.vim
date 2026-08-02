@@ -11,8 +11,8 @@ H.Describe('GrabBeaconSpec', () => {
     s.Given('word', '<caret>hello world')
     s.WhenKeys('wG')
     s.ThenNoSelection()
-    H.Eq(s.st.grab.start, 0)
-    H.Eq(s.st.grab.stop, 5)
+    H.Eq(s.state.grab.start, 0)
+    H.Eq(s.state.grab.stop, 5)
   })
 
   H.It('given a grab then the highlight paints its range', () => {
@@ -37,9 +37,9 @@ H.Describe('GrabBeaconSpec', () => {
     var s = H.FreshSpec()
     s.Given('word', '<caret>hello world')
     s.WhenKeys('wG')
-    H.Ok(s.st.HasGrab(), 'grab set')
+    H.Ok(s.state.HasGrab(), 'grab set')
     s.WhenKeys('G')
-    H.Ok(!s.st.HasGrab(), 'grab cleared')
+    H.Ok(!s.state.HasGrab(), 'grab cleared')
   })
 
   H.It('given a grab and a selection elsewhere when R then the two texts swap', () => {
@@ -67,8 +67,8 @@ H.Describe('GrabBeaconSpec', () => {
     s.WhenKeys('wG')
     s.GivenCaretAt(4)
     s.WhenKeys('wY')
-    H.Eq(s.st.grab.start, 4)
-    H.Eq(s.st.grab.stop, 7)
+    H.Eq(s.state.grab.start, 4)
+    H.Eq(s.state.grab.stop, 7)
   })
 
   H.It('given a grab when z then the grab pops back as a selection', () => {

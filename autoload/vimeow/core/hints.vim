@@ -26,15 +26,15 @@ export def ExpandHintPositions(ctx: P.Ctx, count: number = 10): list<number>
   if sel.anchor == sel.active
     return []
   endif
-  var st = ctx.st
+  var state = ctx.state
   var caret = sel.active
   var backward = caret < sel.anchor
   var out: list<number> = []
-  if st.selType == St.SEL_WORD || st.selType == St.SEL_SYMBOL
-    var Pred = T.CharPred(st.selType == St.SEL_SYMBOL)
+  if state.selType == St.SEL_WORD || state.selType == St.SEL_SYMBOL
+    var IsWord = T.CharPred(state.selType == St.SEL_SYMBOL)
     var i = caret
     for _ in range(count)
-      i = backward ? T.WordsPrevStart(text, i, 1, Pred) : T.WordsNextEnd(text, i, 1, Pred)
+      i = backward ? T.WordsPrevStart(text, i, 1, IsWord) : T.WordsNextEnd(text, i, 1, IsWord)
       if backward && i <= 0
         break
       endif
@@ -43,34 +43,34 @@ export def ExpandHintPositions(ctx: P.Ctx, count: number = 10): list<number>
       endif
       add(out, i)
     endfor
-  elseif st.selType == St.SEL_LINE
-    var ln = T.LineOfOffset(text, caret)
+  elseif state.selType == St.SEL_LINE
+    var line = T.LineOfOffset(text, caret)
     for _ in range(count)
-      ln += backward ? -1 : 1
-      if ln < 0 || ln > T.LineCount(text) - 1
+      line += backward ? -1 : 1
+      if line < 0 || line > T.LineCount(text) - 1
         break
       endif
-      add(out, backward ? T.LineStart(text, ln) : T.LineEnd(text, ln))
+      add(out, backward ? T.LineStart(text, line) : T.LineEnd(text, line))
     endfor
-  elseif st.selType == St.SEL_FIND || st.selType == St.SEL_TILL
-    if empty(st.lastFind)
+  elseif state.selType == St.SEL_FIND || state.selType == St.SEL_TILL
+    if empty(state.lastFind)
       return out
     endif
-    var till = st.selType == St.SEL_TILL
-    for k in range(1, count)
-      var t = T.NthCharTarget(text, st.lastFind.ch, caret, k, backward, till)
-      if t < 0
+    var till = state.selType == St.SEL_TILL
+    for nth in range(1, count)
+      var target = T.NthCharTarget(text, state.lastFind.ch, caret, nth, backward, till)
+      if target < 0
         break
       endif
-      add(out, t)
+      add(out, target)
     endfor
   endif
   var seen: dict<bool> = {}
   var unique: list<number> = []
-  for p in out
-    if !has_key(seen, string(p))
-      seen[string(p)] = true
-      add(unique, p)
+  for position in out
+    if !has_key(seen, string(position))
+      seen[string(position)] = true
+      add(unique, position)
     endif
   endfor
   return unique

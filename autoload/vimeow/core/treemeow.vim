@@ -29,52 +29,52 @@ const LIST_MOTIONS = {
 
 export def BoundChars(): dict<bool>
   var out: dict<bool> = {}
-  var Consider = (c: string) => {
-    var b = get(Rc.Cfg().motion, c, {})
-    if empty(b)
-      b = get(Rc.Defaults().motion, c, {})
+  var Consider = (char: string) => {
+    var binding = get(Rc.Cfg().motion, char, {})
+    if empty(binding)
+      binding = get(Rc.Defaults().motion, char, {})
     endif
-    if !empty(b) && get(b, 'command', '') != 'ignore'
-      out[c] = true
+    if !empty(binding) && get(binding, 'command', '') != 'ignore'
+      out[char] = true
     endif
   }
-  for c in keys(Rc.Defaults().motion)
-    Consider(c)
+  for char in keys(Rc.Defaults().motion)
+    Consider(char)
   endfor
-  for c in keys(Rc.Cfg().motion)
-    Consider(c)
+  for char in keys(Rc.Cfg().motion)
+    Consider(char)
   endfor
   return out
 enddef
 
-export def Dispatch(Run: func(string), c: string, noremap: bool = false, depth: number = 0)
-  var b: dict<any> = {}
+export def Dispatch(Run: func(string), char: string, noremap: bool = false, depth: number = 0)
+  var binding: dict<any> = {}
   if !noremap
-    b = get(Rc.Cfg().motion, c, {})
+    binding = get(Rc.Cfg().motion, char, {})
   endif
-  if empty(b)
-    b = get(Rc.Defaults().motion, c, {})
+  if empty(binding)
+    binding = get(Rc.Defaults().motion, char, {})
   endif
-  if empty(b)
+  if empty(binding)
     return
   endif
-  var command = get(b, 'command', '')
+  var command = get(binding, 'command', '')
   if command != ''
     if has_key(LIST_MOTIONS, command)
       Run(LIST_MOTIONS[command])
     endif
     return
   endif
-  var action = get(b, 'action', '')
+  var action = get(binding, 'action', '')
   if action != ''
     Run(action)
     return
   endif
-  var keys = get(b, 'keys', '')
+  var keys = get(binding, 'keys', '')
   if keys == '' || depth >= MAX_DISPATCH_DEPTH
     return
   endif
   for i in range(len(keys))
-    Dispatch(Run, keys[i], noremap || !get(b, 'recursive', false), depth + 1)
+    Dispatch(Run, keys[i], noremap || !get(binding, 'recursive', false), depth + 1)
   endfor
 enddef

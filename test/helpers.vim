@@ -183,11 +183,11 @@ export class FakeUi implements P.UiPort
     this.grab = range
   enddef
 
-  def ModeChanged(st: St.MeowState)
-    add(this.modes, st.mode)
+  def ModeChanged(state: St.MeowState)
+    add(this.modes, state.mode)
   enddef
 
-  def Refresh(st: St.MeowState)
+  def Refresh(state: St.MeowState)
   enddef
 
   def StartTimer(ms: number, Cb: func): number
@@ -207,17 +207,17 @@ export class Spec
   public var editor: FakeEditor
   public var clip: FakeClipboard
   public var ui: FakeUi
-  public var st: St.MeowState
+  public var state: St.MeowState
 
   def new()
     this.editor = FakeEditor.new()
     this.clip = FakeClipboard.new()
     this.ui = FakeUi.new()
-    this.st = St.NewState()
+    this.state = St.NewState()
   enddef
 
   def Ctx(): P.Ctx
-    return P.Ctx.new(this.editor, this.clip, this.ui, this.st)
+    return P.Ctx.new(this.editor, this.clip, this.ui, this.state)
   enddef
 
   def Given(description: string, textWithCaret: string)
@@ -225,7 +225,7 @@ export class Spec
     this.editor.text = substitute(textWithCaret, '<caret>', '', '')
     var off = at < 0 ? 0 : at
     this.editor.sels = [P.SelRange.new(off, off)]
-    this.st = St.NewState()
+    this.state = St.NewState()
   enddef
 
   def GivenRc(text: string)
@@ -294,11 +294,11 @@ export class Spec
   enddef
 
   def ThenMode(expected: string)
-    Eq(this.st.mode, expected, 'meow mode')
+    Eq(this.state.mode, expected, 'meow mode')
   enddef
 
   def ThenSelType(expected: string)
-    Eq(this.st.selType, expected, 'selection type')
+    Eq(this.state.selType, expected, 'selection type')
   enddef
 
   def ThenClipboard(expected: string)

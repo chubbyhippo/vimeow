@@ -36,10 +36,10 @@ enddef
 
 Register({
   'meow-negative-argument': (ctx: P.Ctx) => {
-    ctx.st.negative = true
+    ctx.state.negative = true
   },
   'negative-argument': (ctx: P.Ctx) => {
-    ctx.st.negative = true
+    ctx.state.negative = true
   },
   'meow-quit': (ctx: P.Ctx) => {
     ctx.port.CloseEditor()

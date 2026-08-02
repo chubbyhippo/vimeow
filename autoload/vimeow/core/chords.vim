@@ -38,7 +38,7 @@ export def Claims(mode: string, chord: dict<any>): bool
 enddef
 
 export def Dispatch(ctx: P.Ctx, chord: dict<any>): bool
-  if !Claims(ctx.st.mode, chord)
+  if !Claims(ctx.state.mode, chord)
     return false
   endif
   var binding = BindingFor(chord)

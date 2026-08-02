@@ -49,8 +49,8 @@ export def SetUserLines(lines: list<string>): dict<any>
   return userConfig
 enddef
 
-export def SetForTest(c: dict<any>)
-  userConfig = c
+export def SetForTest(config: dict<any>)
+  userConfig = config
   RcState.ResetForTest()
 enddef
 
@@ -65,21 +65,21 @@ enddef
 def MergedOrdered(
     defMap: dict<any>, defOrder: list<string>,
     userMap: dict<any>, userOrder: list<string>): list<any>
-  var m: dict<any> = {}
+  var merged: dict<any> = {}
   var order: list<string> = []
-  for k in defOrder
-    if !has_key(m, k)
-      add(order, k)
+  for key in defOrder
+    if !has_key(merged, key)
+      add(order, key)
     endif
-    m[k] = defMap[k]
+    merged[key] = defMap[key]
   endfor
-  for k in userOrder
-    if !has_key(m, k)
-      add(order, k)
+  for key in userOrder
+    if !has_key(merged, key)
+      add(order, key)
     endif
-    m[k] = userMap[k]
+    merged[key] = userMap[key]
   endfor
-  return [m, order]
+  return [merged, order]
 enddef
 
 export def Keypad(): list<any>
@@ -93,17 +93,17 @@ export def KeypadDescs(): list<any>
 enddef
 
 def PrunedIgnores(pair: list<any>): list<any>
-  var m = pair[0]
+  var bindings = pair[0]
   var order = pair[1]
   var kept: list<string> = []
   for key in order
-    if get(m[key], 'command', '') == 'ignore'
-      remove(m, key)
+    if get(bindings[key], 'command', '') == 'ignore'
+      remove(bindings, key)
     else
       add(kept, key)
     endif
   endfor
-  return [m, kept]
+  return [bindings, kept]
 enddef
 
 export def ChordBindings(): dict<any>
@@ -136,9 +136,9 @@ export def RepeatGroups(): list<any>
   for group in defaultConfig.repeatOrder
     var src = defaultConfig.repeatGroups[group]
     var members = {map: {}, order: []}
-    for k in src.order
-      members.map[k] = src.map[k]
-      add(members.order, k)
+    for key in src.order
+      members.map[key] = src.map[key]
+      add(members.order, key)
     endfor
     merged[group] = members
     add(order, group)
@@ -150,22 +150,22 @@ export def RepeatGroups(): list<any>
       add(order, group)
     endif
     var members = merged[group]
-    for k in src.order
-      if !has_key(members.map, k)
-        add(members.order, k)
+    for key in src.order
+      if !has_key(members.map, key)
+        add(members.order, key)
       endif
-      members.map[k] = src.map[k]
+      members.map[key] = src.map[key]
     endfor
   endfor
   var prunedOrder: list<string> = []
   for group in order
     var members = merged[group]
     var keptOrder: list<string> = []
-    for k in members.order
-      if get(members.map[k], 'command', '') == 'ignore'
-        remove(members.map, k)
+    for key in members.order
+      if get(members.map[key], 'command', '') == 'ignore'
+        remove(members.map, key)
       else
-        add(keptOrder, k)
+        add(keptOrder, key)
       endif
     endfor
     members.order = keptOrder
@@ -189,8 +189,8 @@ export def RepeatMapFor(binding: dict<any>): dict<any>
   var groups = pair[0]
   for group in pair[1]
     var members = groups[group]
-    for k in members.order
-      if SameBinding(members.map[k], binding)
+    for key in members.order
+      if SameBinding(members.map[key], binding)
         return members
       endif
     endfor

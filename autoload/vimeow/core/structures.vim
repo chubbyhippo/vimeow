@@ -25,55 +25,58 @@ import autoload 'vimeow/core/selections.vim' as Sel
 const OPENS = '([{'
 const CLOSES = ')]}'
 
-def PendThing(ctx: P.Ctx, p: string)
-  ctx.st.pending = p
+def PendThing(ctx: P.Ctx, pending: string)
+  ctx.state.pending = pending
   ctx.ui.ScheduleWhichKey('things', '')
 enddef
 
-export def ThingSelect(ctx: P.Ctx, kind: string, ch: string)
+export def ThingSelect(ctx: P.Ctx, kind: string, char: string)
   var off = Sel.Primary(ctx).active
-  var b = kind == St.PENDING_BOUNDS ? Things.Bounds(ctx, ch, off) : Things.Inner(ctx, ch, off)
-  if empty(b)
-    ctx.ui.Hint("No thing '" .. ch .. "' here")
+  var bounds = kind == St.PENDING_BOUNDS
+      ? Things.Bounds(ctx, char, off)
+      : Things.Inner(ctx, char, off)
+  if empty(bounds)
+    ctx.ui.Hint("No thing '" .. char .. "' here")
     return
   endif
   if kind == St.PENDING_INNER
-    Sel.Select(ctx, St.SEL_TRANSIENT, b.start, b.stop, false)
+    Sel.Select(ctx, St.SEL_TRANSIENT, bounds.start, bounds.stop, false)
   elseif kind == St.PENDING_BOUNDS
-    Sel.Select(ctx, St.SEL_TRANSIENT, b.stop, b.start, false)
+    Sel.Select(ctx, St.SEL_TRANSIENT, bounds.stop, bounds.start, false)
   elseif kind == St.PENDING_BEGIN
-    Sel.Select(ctx, St.SEL_TRANSIENT, off, b.start, false)
+    Sel.Select(ctx, St.SEL_TRANSIENT, off, bounds.start, false)
   elseif kind == St.PENDING_END
-    Sel.Select(ctx, St.SEL_TRANSIENT, off, b.stop, false)
+    Sel.Select(ctx, St.SEL_TRANSIENT, off, bounds.stop, false)
   endif
 enddef
 
-def EnclosingPair(text: string, s: number, e: number): dict<number>
+def EnclosingPair(text: string, start: number, end: number): dict<number>
   var stack: list<number> = []
   var best: dict<number> = {}
   var i = 0
-  var n = len(text)
-  while i < n
-    var c = T.CharAt(text, i)
-    if c == '"' || c == "'" || c == '`'
+  var length = len(text)
+  while i < length
+    var char = T.CharAt(text, i)
+    if char == '"' || char == "'" || char == '`'
       var j = i + 1
-      while j < n && T.CharAt(text, j) != c && T.CharAt(text, j) != "\n"
+      while j < length && T.CharAt(text, j) != char && T.CharAt(text, j) != "\n"
         if T.CharAt(text, j) == '\'
           j += 1
         endif
         j += 1
       endwhile
-      i = (j < n && T.CharAt(text, j) == c) ? j + 1 : i + 1
+      i = (j < length && T.CharAt(text, j) == char) ? j + 1 : i + 1
     else
-      if stridx(OPENS, c) >= 0
+      if stridx(OPENS, char) >= 0
         add(stack, i)
-      elseif stridx(CLOSES, c) >= 0
-        var kind = stridx(CLOSES, c)
+      elseif stridx(CLOSES, char) >= 0
+        var kind = stridx(CLOSES, char)
         while !empty(stack)
-          var o = remove(stack, -1)
-          if stridx(OPENS, T.CharAt(text, o)) == kind
-            if o < s && i + 1 >= e && (empty(best) || i - o < best.close - best.open)
-              best = {open: o, close: i}
+          var openAt = remove(stack, -1)
+          if stridx(OPENS, T.CharAt(text, openAt)) == kind
+            if openAt < start && i + 1 >= end
+                && (empty(best) || i - openAt < best.close - best.open)
+              best = {open: openAt, close: i}
             endif
             break
           endif
@@ -88,41 +91,38 @@ enddef
 def Block(ctx: P.Ctx)
   var text = ctx.port.GetText()
   var sel = Sel.Primary(ctx)
-  var active = ctx.st.selType == St.SEL_BLOCK && Sel.HasSelection(sel)
-  var back = Sel.BackwardP(ctx) != (ctx.st.TakeCount(1) < 0)
-  var s = active ? sel.Lo() : sel.active
-  var e = active ? sel.Hi() : sel.active
-  var p = EnclosingPair(text, s, e)
-  if empty(p)
+  var active = ctx.state.selType == St.SEL_BLOCK && Sel.HasSelection(sel)
+  var back = Sel.BackwardP(ctx) != (ctx.state.TakeCount(1) < 0)
+  var start = active ? sel.Lo() : sel.active
+  var end = active ? sel.Hi() : sel.active
+  var pair = EnclosingPair(text, start, end)
+  if empty(pair)
     ctx.ui.Hint('No enclosing block')
     return
   endif
   if back
-    Sel.Select(ctx, St.SEL_BLOCK, p.close + 1, p.open, true)
+    Sel.Select(ctx, St.SEL_BLOCK, pair.close + 1, pair.open, true)
   else
-    Sel.Select(ctx, St.SEL_BLOCK, p.open, p.close + 1, true)
+    Sel.Select(ctx, St.SEL_BLOCK, pair.open, pair.close + 1, true)
   endif
 enddef
 
 def ToBlock(ctx: P.Ctx)
   var text = ctx.port.GetText()
-  var back = (ctx.st.selType == St.SEL_BLOCK && Sel.BackwardP(ctx)) || ctx.st.TakeCount(1) < 0
+  var back = (ctx.state.selType == St.SEL_BLOCK && Sel.BackwardP(ctx)) || ctx.state.TakeCount(1) < 0
   var caret = Sel.Primary(ctx).active
-  var p = EnclosingPair(text, caret, caret)
-  if empty(p)
+  var pair = EnclosingPair(text, caret, caret)
+  if empty(pair)
     ctx.ui.Hint('No enclosing block')
     return
   endif
-  Sel.Select(ctx, St.SEL_BLOCK, caret, back ? p.open : p.close + 1, true)
+  Sel.Select(ctx, St.SEL_BLOCK, caret, back ? pair.open : pair.close + 1, true)
 enddef
 
 def SelectJoin(ctx: P.Ctx, text: string, markLine: number, pointLine: number)
   var mark = T.LineEnd(text, markLine)
-  var point = T.LineStart(text, pointLine)
-  var eol = T.LineEnd(text, pointLine)
-  while point < eol && T.CharAt(text, point) =~ '^\s$'
-    point += 1
-  endwhile
+  var point = T.FirstNonBlankOffset(
+    text, T.LineStart(text, pointLine), T.LineEnd(text, pointLine))
   Sel.Select(ctx, St.SEL_JOIN, mark, point, true)
 enddef
 
@@ -131,27 +131,27 @@ def Join(ctx: P.Ctx)
   if len(text) == 0
     return
   endif
-  var n = ctx.st.TakeCount(1)
-  var ln = T.LineOfOffset(text, Sel.Primary(ctx).active)
-  if n >= 0
-    var pl = ln - 1
-    while pl >= 0 && T.IsBlankLine(text, pl)
-      pl -= 1
+  var count = ctx.state.TakeCount(1)
+  var caretLine = T.LineOfOffset(text, Sel.Primary(ctx).active)
+  if count >= 0
+    var prevLine = caretLine - 1
+    while prevLine >= 0 && T.IsBlankLine(text, prevLine)
+      prevLine -= 1
     endwhile
-    if pl < 0
+    if prevLine < 0
       return
     endif
-    SelectJoin(ctx, text, pl, ln)
+    SelectJoin(ctx, text, prevLine, caretLine)
   else
     var last = T.LineCount(text) - 1
-    var nl = ln + 1
-    while nl <= last && T.IsBlankLine(text, nl)
-      nl += 1
+    var nextLine = caretLine + 1
+    while nextLine <= last && T.IsBlankLine(text, nextLine)
+      nextLine += 1
     endwhile
-    if nl > last
+    if nextLine > last
       return
     endif
-    SelectJoin(ctx, text, ln, nl)
+    SelectJoin(ctx, text, caretLine, nextLine)
   endif
 enddef
 

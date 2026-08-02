@@ -34,24 +34,24 @@ export def AllMatches(pattern: string, text: string): list<dict<number>>
   var length = len(text)
   while from <= length
     var pos = matchstrpos(text, pattern, from)
-    var s = pos[1]
-    var e = pos[2]
-    if s < 0
+    var start = pos[1]
+    var end = pos[2]
+    if start < 0
       break
     endif
-    if e == s
-      from = s + 1
+    if end == start
+      from = start + 1
       continue
     endif
-    add(out, {start: s, stop: e})
-    from = e
+    add(out, {start: start, stop: end})
+    from = end
   endwhile
   return out
 enddef
 
-export def FullyMatches(pattern: string, s: string): bool
+export def FullyMatches(pattern: string, text: string): bool
   if !IsValid(pattern)
     return false
   endif
-  return match(s, '^\%(' .. pattern .. '\)$') >= 0
+  return match(text, '^\%(' .. pattern .. '\)$') >= 0
 enddef

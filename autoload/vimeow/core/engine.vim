@@ -35,10 +35,10 @@ export def ClearRepeat()
 enddef
 
 export def EnterKeypad(ctx: P.Ctx)
-  if ctx.st.mode == St.KEYPAD
+  if ctx.state.mode == St.KEYPAD
     return
   endif
-  ctx.st.keypadPreviousState = ctx.st.mode
+  ctx.state.keypadPreviousState = ctx.state.mode
   ctx.SetMode(St.KEYPAD)
   ctx.ui.ScheduleWhichKey('keypad', '')
 enddef
@@ -47,123 +47,123 @@ export def RunEmacsMotion(ctx: P.Ctx, command: string)
   if Registry.Has(command)
     Registry.COMMANDS[command](ctx)
   endif
-  ctx.ui.Refresh(ctx.st)
+  ctx.ui.Refresh(ctx.state)
 enddef
 
-def Resolve(ctx: P.Ctx, c: string, motion: bool): dict<any>
-  if c == ' '
+def Resolve(ctx: P.Ctx, char: string, motion: bool): dict<any>
+  if char == ' '
     return {command: 'meow-keypad', recursive: true}
   endif
-  if ctx.st.noremapDepth == 0
+  if ctx.state.noremapDepth == 0
     var cfg = Rc.Cfg()
-    var user = motion ? get(cfg.motion, c, {}) : get(cfg.normal, c, {})
+    var user = motion ? get(cfg.motion, char, {}) : get(cfg.normal, char, {})
     if !empty(user)
       return user
     endif
   endif
-  var d = Rc.Defaults()
-  return motion ? get(d.motion, c, {}) : get(d.normal, c, {})
+  var defaults = Rc.Defaults()
+  return motion ? get(defaults.motion, char, {}) : get(defaults.normal, char, {})
 enddef
 
-def ResolvePending(ctx: P.Ctx, p: string, c: string)
-  if p == St.PENDING_FIND
-    Motions.FindTill(ctx, c, false)
-  elseif p == St.PENDING_TILL
-    Motions.FindTill(ctx, c, true)
+def ResolvePending(ctx: P.Ctx, pending: string, char: string)
+  if pending == St.PENDING_FIND
+    Motions.FindTill(ctx, char, false)
+  elseif pending == St.PENDING_TILL
+    Motions.FindTill(ctx, char, true)
   else
-    Structures.ThingSelect(ctx, p, c)
+    Structures.ThingSelect(ctx, pending, char)
   endif
 enddef
 
-def StartsMultiKeyInput(st: St.MeowState, cmd: string): bool
-  return st.pending != ''
-      || (st.pendingCount != 0 && cmd != '' && strpart(cmd, 0, 12) == 'meow-expand-')
-      || (st.negative && cmd == 'meow-negative-argument')
+def StartsMultiKeyInput(state: St.MeowState, cmd: string): bool
+  return state.pending != ''
+      || (state.pendingCount != 0 && cmd != '' && strpart(cmd, 0, 12) == 'meow-expand-')
+      || (state.negative && cmd == 'meow-negative-argument')
       || cmd == 'meow-keypad'
 enddef
 
-export def HandleChar(ctx: P.Ctx, c: string): bool
-  var st = ctx.st
-  if st.mode == St.INSERT
+export def HandleChar(ctx: P.Ctx, char: string): bool
+  var state = ctx.state
+  if state.mode == St.INSERT
     return false
   endif
-  if st.mode == St.KEYPAD
-    Keypad.Key(ctx, c)
-    st.lastCommand = 'keypad'
-    ctx.ui.Refresh(st)
+  if state.mode == St.KEYPAD
+    Keypad.Key(ctx, char)
+    state.lastCommand = 'keypad'
+    ctx.ui.Refresh(state)
     return true
   endif
-  if st.HasAvy()
-    Avy.Key(ctx, c)
-    st.lastCommand = 'avy'
-    ctx.ui.Refresh(st)
+  if state.HasAvy()
+    Avy.Key(ctx, char)
+    state.lastCommand = 'avy'
+    ctx.ui.Refresh(state)
     return true
   endif
 
   ctx.ui.HideWhichKey()
   ctx.ui.ClearExpandHints()
 
-  var pend = st.pending
+  var pend = state.pending
   var repeatBinding: dict<any> = {}
   if pend == '' && !empty(repeatMap)
-    repeatBinding = get(repeatMap.map, c, {})
+    repeatBinding = get(repeatMap.map, char, {})
   endif
   if pend == '' && empty(repeatBinding)
     repeatMap = {}
   endif
-  var motionish = st.mode == St.MOTION
+  var motionish = state.mode == St.MOTION
   var binding: dict<any> = {}
   if pend == ''
-    binding = empty(repeatBinding) ? Resolve(ctx, c, motionish) : repeatBinding
+    binding = empty(repeatBinding) ? Resolve(ctx, char, motionish) : repeatBinding
   endif
   var cmd = get(binding, 'command', '')
 
-  if !st.replaying && cmd != 'repeat'
-    if pend == '' && st.pendingCount == 0 && !st.negative
-      st.unit = []
+  if !state.replaying && cmd != 'repeat'
+    if pend == '' && state.pendingCount == 0 && !state.negative
+      state.unit = []
     endif
-    add(st.unit, c)
+    add(state.unit, char)
   endif
 
   if pend != ''
-    st.pending = ''
-    ResolvePending(ctx, pend, c)
-    st.lastCommand = 'pending'
+    state.pending = ''
+    ResolvePending(ctx, pend, char)
+    state.lastCommand = 'pending'
   elseif !empty(binding)
     RunBinding(ctx, binding)
     var fallback = cmd != '' ? cmd : get(binding, 'action', '')
-    st.lastCommand = fallback != '' ? fallback : st.lastCommand
+    state.lastCommand = fallback != '' ? fallback : state.lastCommand
   else
-    st.lastCommand = ''
+    state.lastCommand = ''
   endif
 
-  if !st.replaying && cmd != 'repeat' && !StartsMultiKeyInput(st, cmd)
-    st.lastKeys = copy(st.unit)
+  if !state.replaying && cmd != 'repeat' && !StartsMultiKeyInput(state, cmd)
+    state.lastKeys = copy(state.unit)
   endif
 
-  ctx.ui.Refresh(st)
+  ctx.ui.Refresh(state)
   return true
 enddef
 
 export def RepeatLast(ctx: P.Ctx)
-  var st = ctx.st
-  var keys = st.lastKeys
+  var state = ctx.state
+  var keys = state.lastKeys
   if empty(keys)
     return
   endif
-  st.replaying = true
+  state.replaying = true
   try
-    for k in keys
-      HandleChar(ctx, k)
+    for key in keys
+      HandleChar(ctx, key)
     endfor
   finally
-    st.replaying = false
+    state.replaying = false
   endtry
 enddef
 
-def Dispatch(ctx: P.Ctx, b: dict<any>)
-  var st = ctx.st
-  var command = get(b, 'command', '')
+def Dispatch(ctx: P.Ctx, binding: dict<any>)
+  var state = ctx.state
+  var command = get(binding, 'command', '')
   if command != ''
     if Registry.Has(command)
       Registry.COMMANDS[command](ctx)
@@ -172,7 +172,7 @@ def Dispatch(ctx: P.Ctx, b: dict<any>)
     endif
     return
   endif
-  var action = get(b, 'action', '')
+  var action = get(binding, 'action', '')
   if action != ''
     try
       ctx.ui.RunCommand(action)
@@ -181,20 +181,20 @@ def Dispatch(ctx: P.Ctx, b: dict<any>)
     endtry
     return
   endif
-  var keys = get(b, 'keys', '')
+  var keys = get(binding, 'keys', '')
   if keys == ''
     return
   endif
-  if st.replayDepth >= MAX_REPLAY_DEPTH
+  if state.replayDepth >= MAX_REPLAY_DEPTH
     ctx.ui.Hint('vimeow: mapping recursion is too deep')
     return
   endif
-  var savedReplaying = st.replaying
-  var recursive = get(b, 'recursive', false)
-  st.replaying = true
-  st.replayDepth += 1
+  var savedReplaying = state.replaying
+  var recursive = get(binding, 'recursive', false)
+  state.replaying = true
+  state.replayDepth += 1
   if !recursive
-    st.noremapDepth += 1
+    state.noremapDepth += 1
   endif
   try
     for i in range(len(keys))
@@ -202,51 +202,51 @@ def Dispatch(ctx: P.Ctx, b: dict<any>)
     endfor
   finally
     if !recursive
-      st.noremapDepth -= 1
+      state.noremapDepth -= 1
     endif
-    st.replayDepth -= 1
-    st.replaying = savedReplaying
+    state.replayDepth -= 1
+    state.replaying = savedReplaying
   endtry
 enddef
 
-export def RunBinding(ctx: P.Ctx, b: dict<any>)
-  Dispatch(ctx, b)
-  var m = Rc.RepeatMapFor(b)
-  if empty(m)
+export def RunBinding(ctx: P.Ctx, binding: dict<any>)
+  Dispatch(ctx, binding)
+  var group = Rc.RepeatMapFor(binding)
+  if empty(group)
     return
   endif
   if empty(repeatMap)
-    ctx.ui.Hint('Repeat with ' .. join(m.order, ', '))
+    ctx.ui.Hint('Repeat with ' .. join(group.order, ', '))
   endif
-  repeatMap = m
+  repeatMap = group
 enddef
 
 export def EscapeKey(ctx: P.Ctx): bool
-  var st = ctx.st
-  if st.HasAvy()
+  var state = ctx.state
+  if state.HasAvy()
     Avy.Cancel(ctx)
-    ctx.ui.Refresh(st)
+    ctx.ui.Refresh(state)
     return true
   endif
-  var hadTransient = st.pending != '' || !empty(repeatMap)
-  st.pending = ''
+  var hadTransient = state.pending != '' || !empty(repeatMap)
+  state.pending = ''
   repeatMap = {}
   ctx.ui.HideWhichKey()
   ctx.ui.ClearExpandHints()
-  if st.mode == St.INSERT
+  if state.mode == St.INSERT
     ctx.SetMode(St.NORMAL)
-    ctx.ui.Refresh(st)
+    ctx.ui.Refresh(state)
     return true
   endif
-  if st.mode == St.KEYPAD
+  if state.mode == St.KEYPAD
     Keypad.Exit(ctx)
-    ctx.ui.Refresh(st)
+    ctx.ui.Refresh(state)
     return true
   endif
   var sels = ctx.port.GetSelections()
   if len(sels) > 1 || Sel.HasSelection(sels[0])
     Sel.CancelAll(ctx)
-    ctx.ui.Refresh(st)
+    ctx.ui.Refresh(state)
     return true
   endif
   return hadTransient

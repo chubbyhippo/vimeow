@@ -91,17 +91,17 @@ export def WindmoveStep(dir: string)
 enddef
 
 export def WindmoveSwap(dir: string)
-  var w1 = win_getid()
-  var b1 = winbufnr(w1)
+  var fromWin = win_getid()
+  var fromBuf = winbufnr(fromWin)
   execute Windmove.Plan(dir)
-  var w2 = win_getid()
-  if w2 == w1
+  var toWin = win_getid()
+  if toWin == fromWin
     echohl WarningMsg | echomsg Windmove.NoWindowMessage(dir) | echohl None
     return
   endif
-  var b2 = winbufnr(w2)
-  win_execute(w1, 'buffer ' .. b2)
-  win_execute(w2, 'buffer ' .. b1)
+  var toBuf = winbufnr(toWin)
+  win_execute(fromWin, 'buffer ' .. toBuf)
+  win_execute(toWin, 'buffer ' .. fromBuf)
 enddef
 
 def AceCandidates(): list<dict<any>>
@@ -133,8 +133,8 @@ def PaintAceLabels(wins: list<any>, labelList: list<string>): list<number>
 enddef
 
 def ClearAceLabels(popups: list<number>)
-  for p in popups
-    popup_close(p)
+  for popup in popups
+    popup_close(popup)
   endfor
 enddef
 
@@ -144,11 +144,11 @@ def ReadAcePick(wins: list<any>, labelList: list<string>): number
   var input = ''
   var picked = 0
   while true
-    var ch = getcharstr()
-    if ch == '' || ch == ESC
+    var char = getcharstr()
+    if char == '' || char == ESC
       break
     endif
-    input ..= ch
+    input ..= char
     var remaining = Ace.Matches(labelList, input)
     if empty(remaining)
       break
@@ -221,11 +221,11 @@ export def AceResize()
   var prompt = 'resize: ' .. join(keys, ' ') .. ' — ESC when done'
   while true
     echo 'vimeow: ' .. prompt
-    var ch = getcharstr()
-    if ch == '' || ch == ESC
+    var char = getcharstr()
+    if char == '' || char == ESC
       break
     endif
-    if !Resize.Dispatch(entry.ctx, ch)
+    if !Resize.Dispatch(entry.ctx, char)
       break
     endif
     redraw
