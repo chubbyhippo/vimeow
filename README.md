@@ -1,19 +1,26 @@
 # vimeow
 
 Emacs + [meow](https://github.com/meow-edit/meow) modal editing for Vim 9,
-written in Vim9 script. Selection first, then act — plus the `SPC` keypad that
-stands in for Emacs' prefix keymaps, the stock-Emacs chord layer, avy jumps,
-grab/beacon multiple cursors, and `ace-window`.
+written in Vim9 script. Select first, then act.
 
-No plugin manager, no dependencies, no compilation: it installs through Vim's
-own built-in package mechanism.
+| | |
+|---|---|
+| Keypad | `SPC`, standing in for Emacs' prefix keymaps |
+| Chords | the stock-Emacs chord layer, 32 of them |
+| Jumps | avy |
+| Multiple cursors | grab / beacon |
+| Windows | `ace-window` |
+| Dependencies | none — no plugin manager, no compilation |
+| Install mechanism | Vim's own built-in package mechanism |
 
 ## Requirements
 
-Vim 9.0 or newer built with `+vim9script`, `+textprop` and `+popupwin`.
-`vim --version | grep -o '+vim9script\|+textprop\|+popupwin'` should print all
-three. A system clipboard (`+clipboard`) is used when present and silently
-skipped when not.
+| Item | Value |
+|---|---|
+| Vim | 9.0 or newer |
+| Features | `+vim9script`, `+textprop`, `+popupwin` |
+| Check | `vim --version \| grep -o '+vim9script\|+textprop\|+popupwin'` should print all three |
+| `+clipboard` | used when present, silently skipped when not |
 
 ## Install
 
@@ -23,9 +30,15 @@ cd vimeow && ./setup.sh
 ```
 
 `setup.sh` runs the suite, then symlinks the repo into
-`~/.vim/pack/vimeow/start/vimeow`, which Vim sources at startup. `--copy`
-copies instead of symlinking, `--check-only` just runs the gates,
-`--uninstall` removes it. Or do it by hand:
+`~/.vim/pack/vimeow/start/vimeow`, which Vim sources at startup.
+
+| Flag | Effect |
+|---|---|
+| `--copy` | copy instead of symlinking |
+| `--check-only` | just run the gates |
+| `--uninstall` | remove it |
+
+By hand:
 
 ```sh
 mkdir -p ~/.vim/pack/vimeow/start
@@ -42,8 +55,8 @@ Then open a file and press `SPC ?`.
 
 ## The layout
 
-Press `SPC ?` for the cheatsheet in Vim; `SPC /` then a key describes what that
-keypad entry runs. The short version:
+`SPC ?` is the cheatsheet in Vim; `SPC /` then a key describes what that keypad
+entry runs.
 
 | | |
 |---|---|
@@ -65,20 +78,29 @@ keypad entry runs. The short version:
 | `S` | avy — type a few chars, then a home-row label |
 | `SPC` | the keypad (`SPC x` = `C-x`, `SPC c` = `C-c`, `SPC m` = `M-`) |
 
-The Emacs chords work outside INSERT: `C-f/b/n/p/a/e`, `M-f/b/a/e`, `M-</>`,
-`M-{/}`, `M-u/l/c`, `M-d`, `C-/`, `C-d/k/w/y`, `M-w`, `C-g`, `C-l`, `C-o`,
-`M-m`, `M-\`, `M-SPC`, `M-^` — 32 in all, and every one is an rc line you can
-rebind or hand back to Vim.
+### Emacs chords
+
+Active outside INSERT; every one is an rc line you can rebind or hand back to
+Vim.
+
+| Group | Chords |
+|---|---|
+| Point motion | `C-f/b/n/p/a/e`, `M-f/b/a/e` |
+| Buffer, paragraph | `M-<`, `M->`, `M-{`, `M-}` |
+| Case, word kill | `M-u/l/c`, `M-d` |
+| Edit | `C-/`, `C-d/k/w/y`, `M-w`, `C-g`, `C-l`, `C-o` |
+| Whitespace, join | `M-m`, `M-\`, `M-SPC`, `M-^` |
 
 ## Configuring it
 
-The whole keymap is data, not code: the bundled [`.vimeowrc`](.vimeowrc) is the
-single source of truth, and there is no key anywhere in the Vim9 sources. Copy
-what you want to change into `~/.vimeowrc`; your file overrides the defaults
-entry by entry, so you only list the differences.
+The whole keymap is data, not code: no key lives anywhere in the Vim9 sources.
 
-`SPC c m` opens yours (seeding it the first time), `SPC c M` reloads it without
-restarting Vim.
+| Layer | What |
+|---|---|
+| Bundled [`.vimeowrc`](.vimeowrc) | the single source of truth; full syntax documented at its top |
+| `~/.vimeowrc` | your overrides, entry by entry — list only the differences |
+| `SPC c m` | opens yours, seeding it the first time |
+| `SPC c M` | reloads it without restarting Vim |
 
 ```vim
 " ~/.vimeowrc
@@ -92,10 +114,12 @@ set grab-color=#cde8cd
 repeat qf n <action>(cnext)        " tap-to-continue, like Emacs repeat-mode
 ```
 
-Full syntax is documented at the top of the bundled `.vimeowrc`.
+### Statusline
 
-Statusline: `vimeow#Statusline()` returns `MEOW NORMAL` and friends, or read
-`b:vimeow_mode` yourself.
+| Source | Gives |
+|---|---|
+| `vimeow#Statusline()` | `MEOW NORMAL` and friends |
+| `b:vimeow_mode` | the raw mode |
 
 ```vim
 set statusline=%f\ %{vimeow#Statusline()}
@@ -114,12 +138,14 @@ set statusline=%f\ %{vimeow#Statusline()}
 
 ## Scope
 
-vimeow targets what Emacs + meow can do **in a terminal**. Everything above
-works in a TTY. Vim has no LSP, so the slots Emacs fills with xref/flymake map
-to Vim's own equivalents — tags, `:make`, `:vimgrep` and the quickfix list.
+vimeow targets what Emacs + meow can do **in a terminal** — everything above
+works in a TTY.
 
-`ace-click` (hint badges over clickable UI) is deliberately absent: a terminal
-has no clickable chrome to enumerate, and window panes are `ace-window`'s job.
+| Emacs feature | Here |
+|---|---|
+| xref / flymake | Vim's own equivalents — tags, `:make`, `:vimgrep`, the quickfix list |
+| `ace-click` | deliberately absent — a terminal has no clickable chrome to enumerate |
+| window panes | `ace-window`'s job |
 
 ## Tests
 
@@ -127,10 +153,13 @@ has no clickable chrome to enumerate, and window panes are `ace-window`'s job.
 ./scripts/check.sh
 ```
 
-Checks the Vim features, that the bundled rc and its generated copy agree, then
-runs 143 BDD specs headless and a 34-check smoke test that drives a real Vim —
-real buffers, windows, text properties and keymaps. `scripts/gen_default_rc.sh`
-regenerates the embedded rc after editing `.vimeowrc` (`--check` verifies).
+| Stage | What |
+|---|---|
+| Features | the Vim feature check |
+| Sync | the bundled rc and its generated copy agree |
+| Suite | 143 BDD specs, headless |
+| Smoke | 34 checks driving a real Vim — real buffers, windows, text properties, keymaps |
+| `scripts/gen_default_rc.sh` | regenerates the embedded rc after editing `.vimeowrc` (`--check` verifies) |
 
 ## Layout
 
@@ -145,9 +174,8 @@ plugin/vimeow.vim             entry point: commands and autocommands
 test/                         the BDD suite, the smoke test and the runner
 ```
 
-`core/` talks to Vim only through the `EditorPort`, `ClipboardPort` and `UiPort`
-interfaces in `core/port.vim`, so the editing semantics are testable against a
-fake editor with no Vim buffer in sight.
+`core/` reaches Vim only through the `EditorPort`, `ClipboardPort` and `UiPort`
+interfaces in `core/port.vim`.
 
 ## Licence
 
