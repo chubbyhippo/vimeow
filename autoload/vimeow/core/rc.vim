@@ -106,28 +106,32 @@ def PrunedIgnores(pair: list<any>): list<any>
   return [bindings, kept]
 enddef
 
-export def ChordBindings(): dict<any>
+def MergedChords(): list<any>
   return PrunedIgnores(MergedOrdered(
     defaultConfig.chords, defaultConfig.chordOrder,
-    userConfig.chords, userConfig.chordOrder))[0]
+    userConfig.chords, userConfig.chordOrder))
+enddef
+
+def MergedResizes(): list<any>
+  return PrunedIgnores(MergedOrdered(
+    defaultConfig.resizes, defaultConfig.resizeOrder,
+    userConfig.resizes, userConfig.resizeOrder))
+enddef
+
+export def ChordBindings(): dict<any>
+  return MergedChords()[0]
 enddef
 
 export def ChordOrder(): list<string>
-  return PrunedIgnores(MergedOrdered(
-    defaultConfig.chords, defaultConfig.chordOrder,
-    userConfig.chords, userConfig.chordOrder))[1]
+  return MergedChords()[1]
 enddef
 
 export def ResizeBindings(): dict<any>
-  return PrunedIgnores(MergedOrdered(
-    defaultConfig.resizes, defaultConfig.resizeOrder,
-    userConfig.resizes, userConfig.resizeOrder))[0]
+  return MergedResizes()[0]
 enddef
 
 export def ResizeOrder(): list<string>
-  return PrunedIgnores(MergedOrdered(
-    defaultConfig.resizes, defaultConfig.resizeOrder,
-    userConfig.resizes, userConfig.resizeOrder))[1]
+  return MergedResizes()[1]
 enddef
 
 export def RepeatGroups(): list<any>
@@ -160,14 +164,7 @@ export def RepeatGroups(): list<any>
   var prunedOrder: list<string> = []
   for group in order
     var members = merged[group]
-    var keptOrder: list<string> = []
-    for key in members.order
-      if get(members.map[key], 'command', '') == 'ignore'
-        remove(members.map, key)
-      else
-        add(keptOrder, key)
-      endif
-    endfor
+    var keptOrder = PrunedIgnores([members.map, members.order])[1]
     members.order = keptOrder
     if empty(keptOrder)
       remove(merged, group)

@@ -27,13 +27,21 @@ const LIST_MOTIONS = {
   'meow-right': 'vimeow.tree.expand',
 }
 
+def MotionBinding(char: string, noremap: bool): dict<any>
+  var binding: dict<any> = {}
+  if !noremap
+    binding = get(Rc.Cfg().motion, char, {})
+  endif
+  if empty(binding)
+    binding = get(Rc.Defaults().motion, char, {})
+  endif
+  return binding
+enddef
+
 export def BoundChars(): dict<bool>
   var out: dict<bool> = {}
   var Consider = (char: string) => {
-    var binding = get(Rc.Cfg().motion, char, {})
-    if empty(binding)
-      binding = get(Rc.Defaults().motion, char, {})
-    endif
+    var binding = MotionBinding(char, false)
     if !empty(binding) && get(binding, 'command', '') != 'ignore'
       out[char] = true
     endif
@@ -48,13 +56,7 @@ export def BoundChars(): dict<bool>
 enddef
 
 export def Dispatch(Run: func(string), char: string, noremap: bool = false, depth: number = 0)
-  var binding: dict<any> = {}
-  if !noremap
-    binding = get(Rc.Cfg().motion, char, {})
-  endif
-  if empty(binding)
-    binding = get(Rc.Defaults().motion, char, {})
-  endif
+  var binding = MotionBinding(char, noremap)
   if empty(binding)
     return
   endif
