@@ -71,7 +71,7 @@ def DoGrab(ctx: P.Ctx)
   Clear(ctx)
   var sel = Sel.Primary(ctx)
   if Sel.HasSelection(sel)
-    Set(ctx, sel.Lo(), sel.Hi())
+    Set(ctx, sel.SelStart(), sel.SelEnd())
   endif
   Sel.Cancel(ctx)
 enddef
@@ -83,7 +83,7 @@ def Sync(ctx: P.Ctx)
     return
   endif
   Clear(ctx)
-  Set(ctx, sel.Lo(), sel.Hi())
+  Set(ctx, sel.SelStart(), sel.SelEnd())
   Sel.Cancel(ctx)
 enddef
 
@@ -104,8 +104,8 @@ def Swap(ctx: P.Ctx)
   endif
   var grabStart = state.grab.start
   var grabEnd = state.grab.stop
-  var selStart = sel.Lo()
-  var selEnd = sel.Hi()
+  var selStart = sel.SelStart()
+  var selEnd = sel.SelEnd()
   if max([grabStart, selStart]) < min([grabEnd, selEnd])
       && !(grabStart == selStart && grabEnd == selEnd)
     ctx.ui.Hint('Selection overlaps the grab')
@@ -156,8 +156,8 @@ export def Beacon(ctx: P.Ctx)
   if !Sel.HasSelection(sel)
     return
   endif
-  var selStart = sel.Lo()
-  var selEnd = sel.Hi()
+  var selStart = sel.SelStart()
+  var selEnd = sel.SelEnd()
   if selStart < grabStart || selEnd > grabEnd || selEnd == selStart
     return
   endif

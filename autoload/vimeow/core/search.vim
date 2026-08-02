@@ -79,7 +79,7 @@ def Search(ctx: P.Ctx)
   var sel = Sel.Primary(ctx)
   var pattern = empty(state.searchHistory) ? '' : state.searchHistory[-1]
   if Sel.HasSelection(sel)
-    var selText = T.Slice(ctx.port.GetText(), sel.Lo(), sel.Hi())
+    var selText = T.Slice(ctx.port.GetText(), sel.SelStart(), sel.SelEnd())
     if len(selText) > 0 && (pattern == '' || !Rx.FullyMatches(pattern, selText))
       pattern = T.RegexQuote(selText)
       Push(state, pattern)

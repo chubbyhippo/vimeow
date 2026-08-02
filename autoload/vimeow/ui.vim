@@ -291,7 +291,7 @@ export class VimUi implements P.UiPort
   def PaintSelections(sels: list<P.SelRange>)
     this.ClearProp(PROP_SELECTION)
     for sel in sels
-      this.AddRange(PROP_SELECTION, sel.Lo(), sel.Hi())
+      this.AddRange(PROP_SELECTION, sel.SelStart(), sel.SelEnd())
     endfor
     if this.grabRange != null_object
       this.ClearProp(PROP_GRAB)
@@ -302,8 +302,6 @@ export class VimUi implements P.UiPort
   def ModeChanged(state: St.MeowState)
     b:vimeow_mode = state.mode
     if state.mode == St.INSERT && bufnr('%') == this.buf && mode() !=# 'i'
-      # Vim's own insert mode owns the caret shape and the typed keys. This runs
-      # from inside a mapping, so the switch has to be deferred to after it.
       timer_start(0, (_) => execute('startinsert'))
     endif
     redrawstatus

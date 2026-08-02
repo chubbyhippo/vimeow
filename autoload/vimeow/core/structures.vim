@@ -93,8 +93,8 @@ def Block(ctx: P.Ctx)
   var sel = Sel.Primary(ctx)
   var active = ctx.state.selType == St.SEL_BLOCK && Sel.HasSelection(sel)
   var back = Sel.BackwardP(ctx) != (ctx.state.TakeCount(1) < 0)
-  var start = active ? sel.Lo() : sel.active
-  var end = active ? sel.Hi() : sel.active
+  var start = active ? sel.SelStart() : sel.active
+  var end = active ? sel.SelEnd() : sel.active
   var pair = EnclosingPair(text, start, end)
   if empty(pair)
     ctx.ui.Hint('No enclosing block')

@@ -29,11 +29,11 @@ export class SelRange
   def new(this.anchor, this.active)
   enddef
 
-  def Lo(): number
+  def SelStart(): number
     return this.anchor < this.active ? this.anchor : this.active
   enddef
 
-  def Hi(): number
+  def SelEnd(): number
     return this.anchor > this.active ? this.anchor : this.active
   enddef
 

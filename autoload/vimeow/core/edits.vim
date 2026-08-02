@@ -39,7 +39,7 @@ def EditCarets(ctx: P.Ctx, Compute: func(P.SelRange, number, number): dict<any>)
   var order: list<dict<any>> = []
   var index = 0
   for sel in sels
-    add(order, {sel: sel, index: index, start: sel.Lo()})
+    add(order, {sel: sel, index: index, start: sel.SelStart()})
     index += 1
   endfor
   sort(order, (a, b) => a.start != b.start ? b.start - a.start : a.index - b.index)
@@ -47,7 +47,7 @@ def EditCarets(ctx: P.Ctx, Compute: func(P.SelRange, number, number): dict<any>)
   var edits: list<P.TextEdit> = []
   var results: dict<any> = {}
   for item in order
-    var computed = Compute(item.sel, item.start, item.sel.Hi())
+    var computed = Compute(item.sel, item.start, item.sel.SelEnd())
     if computed.edit != null_object
       add(edits, computed.edit)
     endif
@@ -85,7 +85,7 @@ enddef
 def EnterInsertAt(ctx: P.Ctx, atHigh: bool)
   var moved: list<P.SelRange> = []
   for sel in ctx.port.GetSelections()
-    var at = atHigh ? sel.Hi() : sel.Lo()
+    var at = atHigh ? sel.SelEnd() : sel.SelStart()
     add(moved, P.SelRange.new(at, at))
   endfor
   ctx.port.SetSelections(moved)
@@ -200,8 +200,8 @@ def BackwardDelete(ctx: P.Ctx)
 enddef
 
 def KillRange(ctx: P.Ctx, sel: P.SelRange, text: string): dict<number>
-  var start = sel.Lo()
-  var end = sel.Hi()
+  var start = sel.SelStart()
+  var end = sel.SelEnd()
   if ctx.state.selType == St.SEL_LINE && sel.active >= sel.anchor && end < len(text)
     if T.CharAt(text, end) == "\r"
       end += 1
@@ -220,7 +220,7 @@ def RegionsInOrder(sels: list<P.SelRange>): list<P.SelRange>
       add(regions, sel)
     endif
   endfor
-  sort(regions, (a, b) => a.Lo() - b.Lo())
+  sort(regions, (a, b) => a.SelStart() - b.SelStart())
   return regions
 enddef
 
@@ -236,8 +236,8 @@ enddef
 def JoinKill(ctx: P.Ctx)
   var text = ctx.port.GetText()
   var prim = Sel.Primary(ctx)
-  var start = prim.Lo()
-  var end = prim.Hi()
+  var start = prim.SelStart()
+  var end = prim.SelEnd()
   var before = start > 0 ? T.CharAt(text, start - 1) : "\n"
   var after = end < len(text) ? T.CharAt(text, end) : "\n"
   var space = before != "\n" && after != "\n"

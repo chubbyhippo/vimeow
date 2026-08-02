@@ -270,7 +270,7 @@ export class Spec
     if s.anchor == s.active
       return ''
     endif
-    return T.Slice(this.editor.text, s.Lo(), s.Hi())
+    return T.Slice(this.editor.text, s.SelStart(), s.SelEnd())
   enddef
 
   def CaretLine(): number

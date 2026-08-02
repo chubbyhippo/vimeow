@@ -42,14 +42,6 @@ export def HasSelection(sel: P.SelRange): bool
   return sel.anchor != sel.active
 enddef
 
-export def Lo(sel: P.SelRange): number
-  return sel.Lo()
-enddef
-
-export def Hi(sel: P.SelRange): number
-  return sel.Hi()
-enddef
-
 export def BackwardP(ctx: P.Ctx): bool
   var sel = Primary(ctx)
   return HasSelection(sel) && sel.active < sel.anchor
