@@ -75,7 +75,14 @@ H.Describe('ChordSpec', () => {
     H.Eq(TargetOf('M-l'), 'downcase-word')
     H.Eq(TargetOf('M-c'), 'capitalize-word')
     H.Eq(TargetOf('M-d'), 'kill-word')
-    H.Eq(len(Rc.ChordOrder()), 32)
+    H.Eq(len(Rc.ChordOrder()), 34)
+  })
+
+  H.It('given the bundled defaults then the ported tranche-2 chords resolve to their verified action ids', () => {
+    H.FreshSpec()
+    H.Eq(TargetOf('C-s'), "call feedkeys('/')")
+    H.Eq(TargetOf('C-r'), "call feedkeys('?')")
+    H.Eq(TargetOf('M-;'), 'VimeowAceWindow')
   })
 
   H.It('given the bundled defaults then the stock Emacs edit chords resolve', () => {
@@ -111,7 +118,7 @@ H.Describe('ChordSpec', () => {
     var s = H.FreshSpec()
     s.GivenRc('cmap C-f ignore')
     H.Eq(TargetOf('C-f'), '')
-    H.Eq(len(Rc.ChordOrder()), 31)
+    H.Eq(len(Rc.ChordOrder()), 33)
   })
 
   H.It('given a pressed chord event then bindingFor resolves it and plain keys do not', () => {

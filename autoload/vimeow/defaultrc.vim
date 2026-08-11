@@ -392,4 +392,18 @@ export const LINES: list<string> =<< trim END
   cmap M-\ delete-horizontal-space
   cmap M-SPC just-one-space
   cmap M-^ ms
+  
+  " Tranche 2, ported from ideameow: no core isearch command exists, so C-s/
+  " C-r are host action chords, like C-l before it went core. Vim's own
+  " forward-search (/) and backward-search (?) prompts are the exact native
+  " analogs of Emacs' isearch-forward/isearch-backward, and `call feedkeys('/')`
+  " is the same idiom the bundled rc already uses at SPC s s / SPC m x; M-;
+  " reuses the module command the keypad's SPC w w already dispatches. C-;
+  " (ace-click) is infeasible for a TUI (no clickable chrome to enumerate) —
+  " declined, not guessed, same as neomeow. M-y (PasteMultiple / clipboard
+  " history) has no yank-pop/kill-ring-browsing equivalent here either — also
+  " declined.
+  cmap C-s <action>(call feedkeys('/'))
+  cmap C-r <action>(call feedkeys('?'))
+  cmap M-; <action>(VimeowAceWindow)
 END

@@ -6,7 +6,7 @@ written in Vim9 script. Select first, then act.
 | | |
 |---|---|
 | Keypad | `SPC`, standing in for Emacs' prefix keymaps |
-| Chords | the stock-Emacs chord layer, 32 of them |
+| Chords | the stock-Emacs chord layer, 34 of them |
 | Jumps | avy |
 | Multiple cursors | grab / beacon |
 | Windows | `ace-window` |
