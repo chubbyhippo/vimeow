@@ -70,6 +70,10 @@ def ResolvePending(ctx: P.Ctx, pending: string, char: string)
     Motions.FindTill(ctx, char, false)
   elseif pending == St.PENDING_TILL
     Motions.FindTill(ctx, char, true)
+  elseif pending == St.PENDING_FIND_EXPAND
+    Motions.FindTill(ctx, char, false, true)
+  elseif pending == St.PENDING_TILL_EXPAND
+    Motions.FindTill(ctx, char, true, true)
   else
     Structures.ThingSelect(ctx, pending, char)
   endif

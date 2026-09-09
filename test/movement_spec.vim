@@ -78,6 +78,60 @@ H.Describe('MovementSpec', () => {
     s.ThenSelType(St.SEL_TILL)
   })
 
+  H.It('given F with no active selection then it behaves like a fresh find', () => {
+    var s = H.FreshSpec()
+    s.Given('letters', '<caret>abcabc')
+    s.WhenKeys('Fc')
+    s.ThenSelection('abc')
+    s.ThenSelType(St.SEL_FIND)
+  })
+
+  H.It('given T with no active selection then it behaves like a fresh till', () => {
+    var s = H.FreshSpec()
+    s.Given('letters', '<caret>abcabc')
+    s.WhenKeys('Tc')
+    s.ThenSelection('ab')
+    s.ThenSelType(St.SEL_TILL)
+  })
+
+  H.It('given w then F then the selection extends from the word start through the char', () => {
+    var s = H.FreshSpec()
+    s.Given('comma separated', 'w<caret>ord1, word2 word3')
+    s.WhenKeys('w')
+    s.ThenSelection('word1')
+    s.WhenKeys('F3')
+    s.ThenSelection('word1, word2 word3')
+    s.ThenSelType(St.SEL_FIND)
+  })
+
+  H.It('given w then T then the selection extends from the word start up to the char', () => {
+    var s = H.FreshSpec()
+    s.Given('comma separated', 'w<caret>ord1, word2 word3')
+    s.WhenKeys('w')
+    s.ThenSelection('word1')
+    s.WhenKeys('T3')
+    s.ThenSelection('word1, word2 word')
+    s.ThenSelType(St.SEL_TILL)
+  })
+
+  H.It('given w then a backward F inside the selection then the anchor snaps to the far (max) end', () => {
+    var s = H.FreshSpec()
+    s.Given('comma separated', 'w<caret>ord1, word2 word3')
+    s.WhenKeys('w')
+    s.ThenSelection('word1')
+    s.WhenKeys('-F1')
+    s.ThenSelection('1')
+    s.ThenSelType(St.SEL_FIND)
+  })
+
+  H.It('given F when the char is absent then nothing changes', () => {
+    var s = H.FreshSpec()
+    s.Given('plain', '<caret>hello')
+    s.WhenKeys('FZ')
+    s.ThenNoSelection()
+    s.ThenCaretAt(0)
+  })
+
   H.It('given move-end-of-line then the caret lands at the line end', () => {
     var s = H.FreshSpec()
     s.Given("two lines", "<caret>hello\nworld")

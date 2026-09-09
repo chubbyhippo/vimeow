@@ -35,6 +35,8 @@ export const SEL_TRANSIENT = 'TRANSIENT'
 
 export const PENDING_FIND = 'FIND'
 export const PENDING_TILL = 'TILL'
+export const PENDING_FIND_EXPAND = 'FIND_EXPAND'
+export const PENDING_TILL_EXPAND = 'TILL_EXPAND'
 export const PENDING_INNER = 'INNER'
 export const PENDING_BOUNDS = 'BOUNDS'
 export const PENDING_BEGIN = 'BEGIN'

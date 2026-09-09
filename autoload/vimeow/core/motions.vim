@@ -310,7 +310,7 @@ def GotoLine(ctx: P.Ctx)
   Sel.Select(ctx, St.SEL_LINE, T.LineStart(text, line), T.LineEnd(text, line), true)
 enddef
 
-export def FindTill(ctx: P.Ctx, char: string, till: bool)
+export def FindTill(ctx: P.Ctx, char: string, till: bool, expand: bool = false)
   var count = ctx.state.TakeCount(1)
   var text = ctx.port.GetText()
   var caret = Sel.Primary(ctx).active
@@ -320,7 +320,16 @@ export def FindTill(ctx: P.Ctx, char: string, till: bool)
     return
   endif
   ctx.state.lastFind = {ch: char}
-  Sel.Select(ctx, till ? St.SEL_TILL : St.SEL_FIND, caret, target, false)
+  var mark = FindExpandMark(ctx, caret, target, expand)
+  Sel.Select(ctx, till ? St.SEL_TILL : St.SEL_FIND, mark, target, expand)
+enddef
+
+def FindExpandMark(ctx: P.Ctx, mark: number, pos: number, expand: bool): number
+  var sel = Sel.Primary(ctx)
+  if !expand || !sel.HasSelection()
+    return mark
+  endif
+  return mark < pos ? sel.SelStart() : sel.SelEnd()
 enddef
 
 export def Commands(): dict<func>
@@ -346,6 +355,12 @@ export def Commands(): dict<func>
     },
     'meow-till': (ctx: P.Ctx) => {
       ctx.state.pending = St.PENDING_TILL
+    },
+    'meow-find-expand': (ctx: P.Ctx) => {
+      ctx.state.pending = St.PENDING_FIND_EXPAND
+    },
+    'meow-till-expand': (ctx: P.Ctx) => {
+      ctx.state.pending = St.PENDING_TILL_EXPAND
     },
     'forward-char': (ctx: P.Ctx) => CharOrExpand(ctx, ctx.state.TakeCount(1)),
     'backward-char': (ctx: P.Ctx) => CharOrExpand(ctx, -ctx.state.TakeCount(1)),
