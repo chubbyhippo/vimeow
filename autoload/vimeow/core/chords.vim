@@ -22,8 +22,16 @@ import autoload 'vimeow/core/port.vim' as P
 import autoload 'vimeow/core/rc.vim' as Rc
 import autoload 'vimeow/core/engine.vim' as Engine
 
+export const KEYPAD_ENTRY_CHORD = 'M-;'
+
+def IsKeypadEntryChord(mode: string, chord: dict<any>): bool
+  return (mode == St.INSERT || mode == St.KEYPAD)
+      && !empty(chord)
+      && Chord.Spelling(chord) == KEYPAD_ENTRY_CHORD
+enddef
+
 export def TakesChords(mode: string): bool
-  return mode == St.NORMAL || mode == St.MOTION
+  return mode == St.NORMAL || mode == St.MOTION || mode == St.INSERT || mode == St.KEYPAD
 enddef
 
 export def BindingFor(chord: dict<any>): dict<any>
@@ -34,6 +42,9 @@ export def BindingFor(chord: dict<any>): dict<any>
 enddef
 
 export def Claims(mode: string, chord: dict<any>): bool
+  if IsKeypadEntryChord(mode, chord)
+    return false
+  endif
   return TakesChords(mode) && !empty(BindingFor(chord))
 enddef
 

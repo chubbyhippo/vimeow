@@ -115,6 +115,77 @@ def StringThing(text: string, offset: number, inner: bool): dict<number>
   return {}
 enddef
 
+def LineStartBefore(text: string, offset: number): number
+  var i = offset - 1
+  while i >= 0 && T.CharAt(text, i) != "\n"
+    i -= 1
+  endwhile
+  return i + 1
+enddef
+
+def LineEndAfter(text: string, offset: number): number
+  var length = len(text)
+  var i = offset
+  while i < length && T.CharAt(text, i) != "\n"
+    i += 1
+  endwhile
+  return i
+enddef
+
+def ScanForwardToDelim(text: string, start: number, stop: number, delim: string): number
+  var j = start
+  while j < stop
+    var char = T.CharAt(text, j)
+    if char == '\'
+      j += 2
+    else
+      if char == delim
+        return j
+      endif
+      j += 1
+    endif
+  endwhile
+  return -1
+enddef
+
+def IsEscapedAt(text: string, index: number, lineStart: number): bool
+  var count = 0
+  var j = index - 1
+  while j >= lineStart && T.CharAt(text, j) == '\'
+    count += 1
+    j -= 1
+  endwhile
+  return count % 2 == 1
+enddef
+
+def ScanBackwardToDelim(text: string, start: number, lineStart: number, delim: string): number
+  var i = start
+  while i >= lineStart
+    if T.CharAt(text, i) == delim && !IsEscapedAt(text, i, lineStart)
+      return i
+    endif
+    i -= 1
+  endwhile
+  return -1
+enddef
+
+def Delimited(text: string, offset: number, delim: string, inner: bool): dict<number>
+  var lineStart = LineStartBefore(text, offset)
+  var lineEnd = LineEndAfter(text, offset)
+  var open = ScanBackwardToDelim(text, offset - 1, lineStart, delim)
+  if open < 0
+    return {}
+  endif
+  var close = ScanForwardToDelim(text, max([offset, open + 1]), lineEnd, delim)
+  if close < 0
+    return {}
+  endif
+  if inner
+    return {start: open + 1, stop: close}
+  endif
+  return {start: open, stop: close + 1}
+enddef
+
 def Symbol(text: string, offset: number): dict<number>
   var at = offset
   var length = len(text)
@@ -252,6 +323,10 @@ def Compute(ctx: P.Ctx, char: string, offset: number, inner: bool): dict<number>
     return Pair(text, offset, '{', '}', inner)
   elseif char == 'g'
     return StringThing(text, offset, inner)
+  elseif char == '/'
+    return Delimited(text, offset, '/', inner)
+  elseif char == '?'
+    return Delimited(text, offset, '?', inner)
   elseif char == 'e'
     return Symbol(text, offset)
   elseif char == 'w'

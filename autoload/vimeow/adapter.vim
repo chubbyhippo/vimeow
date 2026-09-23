@@ -294,6 +294,11 @@ def SetKeymaps(buf: number)
     execute printf(
       'nnoremap <buffer> <nowait> <silent> %s <ScriptCmd>HandleChord(%d, %s, %s)<CR>',
       lhs, buf, string(spelling), string(lhs))
+    if spelling != Chords.KEYPAD_ENTRY_CHORD
+      execute printf(
+        'inoremap <buffer> <nowait> <silent> %s <ScriptCmd>HandleChord(%d, %s, %s)<CR>',
+        lhs, buf, string(spelling), string(lhs))
+    endif
   endfor
   execute printf(
     'nnoremap <buffer> <nowait> <silent> <Esc> <ScriptCmd>HandleEscape(%d)<CR>', buf)
@@ -306,8 +311,11 @@ def ClearKeymaps(buf: number)
     var lhs = key == ' ' ? '<Space>' : (key == '<' ? '<lt>' : key)
     silent! execute 'nunmap <buffer> ' .. lhs
   endfor
-  for lhs in keys(ChordKeymaps())
+  for [lhs, spelling] in items(ChordKeymaps())
     silent! execute 'nunmap <buffer> ' .. lhs
+    if spelling != Chords.KEYPAD_ENTRY_CHORD
+      silent! execute 'iunmap <buffer> ' .. lhs
+    endif
   endfor
 enddef
 

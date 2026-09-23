@@ -75,7 +75,9 @@ export const LINES: list<string> =<< trim END
   
   nmap x meow-line
   nmap f meow-find
+  nmap F meow-find-expand
   nmap t meow-till
+  nmap T meow-till-expand
   nmap o meow-block
   nmap O meow-to-block
   nmap m meow-join
@@ -385,6 +387,13 @@ export const LINES: list<string> =<< trim END
   " zz / zt / zb for the three positions.
   cmap C-l recenter-top-bottom
   
+  " C-v scroll-up-command / M-v scroll-down-command: real Emacs page motions —
+  " they move the caret forward/backward by one screenful (minus a 2-line
+  " overlap) rather than only scrolling the viewport, and extend an active
+  " selection instead of replacing it, like every other point motion here.
+  cmap C-v scroll-up-command
+  cmap M-v scroll-down-command
+  
   " stock-Emacs whitespace and line chords. M-^ is meow-join + kill: killing the
   " join selection IS delete-indentation, so it needs no command of its own.
   cmap M-m back-to-indentation
@@ -398,11 +407,15 @@ export const LINES: list<string> =<< trim END
   " forward-search (/) and backward-search (?) prompts are the exact native
   " analogs of Emacs' isearch-forward/isearch-backward, and `call feedkeys('/')`
   " is the same idiom the bundled rc already uses at SPC s s / SPC m x; M-;
-  " reuses the module command the keypad's SPC w w already dispatches. C-;
-  " (ace-click) is infeasible for a TUI (no clickable chrome to enumerate) —
-  " declined, not guessed, same as neomeow. M-y (PasteMultiple / clipboard
-  " history) has no yank-pop/kill-ring-browsing equivalent here either — also
-  " declined.
+  " reuses the module command the keypad's SPC w w already dispatches. The
+  " other four siblings retarget M-; at a native toggle-line-comment action
+  " (NetBeans/DBeaver/VS Code/Notepad++ all ship one); vanilla Vim has none —
+  " building one from &commentstring would be new host-side infra, not a
+  " verified action id, so it stays declined here, not guessed, unlike the
+  " hosts that have a real one. C-; (ace-click) is infeasible for a TUI (no
+  " clickable chrome to enumerate) — declined, not guessed, same as neomeow.
+  " M-y (PasteMultiple / clipboard history) has no yank-pop/kill-ring-browsing
+  " equivalent here either — also declined.
   cmap C-s <action>(call feedkeys('/'))
   cmap C-r <action>(call feedkeys('?'))
   cmap M-; <action>(VimeowAceWindow)

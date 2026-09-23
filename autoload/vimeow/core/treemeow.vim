@@ -17,6 +17,7 @@ vim9script
 # SPDX-License-Identifier: GPL-3.0-or-later
 
 import autoload 'vimeow/core/rc.vim' as Rc
+import autoload 'vimeow/core/chords.vim' as Chords
 
 const MAX_DISPATCH_DEPTH = 8
 
@@ -25,6 +26,13 @@ const LIST_MOTIONS = {
   'meow-prev': 'vimeow.tree.focusUp',
   'meow-left': 'vimeow.tree.collapse',
   'meow-right': 'vimeow.tree.expand',
+}
+
+const LIST_CHORD_MOTIONS = {
+  'next-line': 'vimeow.tree.focusDown',
+  'previous-line': 'vimeow.tree.focusUp',
+  'backward-char': 'vimeow.tree.collapse',
+  'forward-char': 'vimeow.tree.expand',
 }
 
 def MotionBinding(char: string, noremap: bool): dict<any>
@@ -55,6 +63,17 @@ export def BoundChars(): dict<bool>
   return out
 enddef
 
+export def BoundChords(): dict<bool>
+  var out: dict<bool> = {}
+  for [spelling, binding] in items(Rc.ChordBindings())
+    var command = get(binding, 'command', '')
+    if get(binding, 'action', '') != '' || (command != '' && has_key(LIST_CHORD_MOTIONS, command))
+      out[spelling] = true
+    endif
+  endfor
+  return out
+enddef
+
 export def Dispatch(Run: func(string), char: string, noremap: bool = false, depth: number = 0)
   var binding = MotionBinding(char, noremap)
   if empty(binding)
@@ -79,4 +98,20 @@ export def Dispatch(Run: func(string), char: string, noremap: bool = false, dept
   for i in range(len(keys))
     Dispatch(Run, keys[i], noremap || !get(binding, 'recursive', false), depth + 1)
   endfor
+enddef
+
+export def DispatchChord(Run: func(string), chord: dict<any>)
+  var binding = Chords.BindingFor(chord)
+  if empty(binding)
+    return
+  endif
+  var action = get(binding, 'action', '')
+  if action != ''
+    Run(action)
+    return
+  endif
+  var command = get(binding, 'command', '')
+  if command != '' && has_key(LIST_CHORD_MOTIONS, command)
+    Run(LIST_CHORD_MOTIONS[command])
+  endif
 enddef

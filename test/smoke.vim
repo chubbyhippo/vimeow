@@ -56,7 +56,7 @@ for spelling in Rc.ChordOrder()
     chordMaps += 1
   endif
 endfor
-Check('every rc chord has a buffer keymap (' .. chordMaps .. '/34)', chordMaps == 34)
+Check('every rc chord has a buffer keymap (' .. chordMaps .. '/37)', chordMaps == 37)
 
 Keys(buf, 'w')
 entry = Adapter.ContextFor(buf)

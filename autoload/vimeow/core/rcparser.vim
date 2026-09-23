@@ -202,18 +202,27 @@ def ParseDescBody(config: dict<any>, body: string, Err: func(string))
 enddef
 
 def ParseChordLine(config: dict<any>, cmd: string, rest: string, Err: func(string))
-  var split = match(rest, '\s\+\S*$')
-  if split <= 0
+  var tokens = split(rest, '\s\+')
+  if len(tokens) < 2
     Err(cmd .. ' needs a chord and a target')
     return
   endif
-  var spelling = trim(strpart(rest, 0, split))
-  var chord = Chord.Parse(spelling)
-  if empty(chord)
-    Err('not a chord (needs Ctrl or Alt and one key): ' .. spelling)
+  var spelling = ''
+  var consumed = 0
+  for i in range(1, len(tokens) - 1)
+    var candidate = join(tokens[0 : i - 1], ' ')
+    if !empty(Chord.Parse(candidate))
+      spelling = candidate
+      consumed = i
+      break
+    endif
+  endfor
+  if spelling == ''
+    Err('not a chord (needs Ctrl or Alt and one key): ' .. join(tokens, ' '))
     return
   endif
-  var binding = ParseTarget(trim(strpart(rest, split)), cmd == 'cmap', cmd .. ' ' .. rest, Err)
+  var chord = Chord.Parse(spelling)
+  var binding = ParseTarget(join(tokens[consumed : ], ' '), cmd == 'cmap', cmd .. ' ' .. rest, Err)
   if empty(binding)
     return
   endif

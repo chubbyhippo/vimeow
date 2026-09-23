@@ -99,4 +99,46 @@ H.Describe('ThingsSpec', () => {
     s.WhenKeys('o')
     s.ThenSelection('[cd]')
   })
+
+  H.It('given slash or question delimiters then comma or dot selects inner and bounds', () => {
+    var s = H.FreshSpec()
+    s.Given('slash pair', 'val regex = /foo\/b<caret>ar/g')
+    s.WhenKeys(',/')
+    s.ThenSelection('foo\/bar')
+    s.ThenSelType('TRANSIENT')
+
+    s.Given('slash pair', 'val regex = /foo\/b<caret>ar/g')
+    s.WhenKeys('./')
+    s.ThenSelection('/foo\/bar/')
+
+    s.Given('slash pair', 'val regex = /foo\/b<caret>ar/g')
+    s.WhenKeys('[/')
+    s.ThenSelection('foo\/b')
+
+    s.Given('slash pair', 'val regex = /foo\/b<caret>ar/g')
+    s.WhenKeys(']/')
+    s.ThenSelection('ar')
+
+    s.Given('question pair', 'pattern ?foo\?b<caret>ar? flag')
+    s.WhenKeys(',?')
+    s.ThenSelection('foo\?bar')
+    s.ThenSelType('TRANSIENT')
+
+    s.Given('question pair', 'pattern ?foo\?b<caret>ar? flag')
+    s.WhenKeys('.?')
+    s.ThenSelection('?foo\?bar?')
+  })
+
+  H.It('given a url with a double slash then comma slash selects between the surrounding slashes', () => {
+    var s = H.FreshSpec()
+    s.Given('url with double slash', 'http://mav<caret>en.apache.org/POM/4.0.0')
+    s.WhenKeys(',/')
+    s.ThenSelection('maven.apache.org')
+    s.ThenSelType('TRANSIENT')
+
+    s.Given('url with double slash', 'http://maven.apache.org/PO<caret>M/4.0.0')
+    s.WhenKeys(',/')
+    s.ThenSelection('POM')
+    s.ThenSelType('TRANSIENT')
+  })
 })

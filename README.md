@@ -80,14 +80,17 @@ entry runs.
 
 ### Emacs chords
 
-Active outside INSERT; every one is an rc line you can rebind or hand back to
-Vim.
+Active in every mode — NORMAL, MOTION, INSERT, and even mid-keypad — just like
+real Emacs, except `M-;`, which never claims in INSERT or KEYPAD so it always
+opens (or re-enters) the keypad there instead. Every chord is an rc line you
+can rebind or hand back to Vim.
 
 | Group | Chords |
 |---|---|
 | Point motion | `C-f/b/n/p/a/e`, `M-f/b/a/e` |
 | Buffer, paragraph | `M-<`, `M->`, `M-{`, `M-}` |
 | Case, word kill | `M-u/l/c`, `M-d` |
+| Scroll | `C-v`, `M-v` |
 | Edit | `C-/`, `C-d/k/w/y`, `M-w`, `C-g`, `C-l`, `C-o` |
 | Whitespace, join | `M-m`, `M-\`, `M-SPC`, `M-^` |
 
@@ -157,7 +160,7 @@ works in a TTY.
 |---|---|
 | Features | the Vim feature check |
 | Sync | the bundled rc and its generated copy agree |
-| Suite | 143 BDD specs, headless |
+| Suite | 164 BDD specs, headless |
 | Smoke | 34 checks driving a real Vim — real buffers, windows, text properties, keymaps |
 | `scripts/gen_default_rc.sh` | regenerates the embedded rc after editing `.vimeowrc` (`--check` verifies) |
 

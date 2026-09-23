@@ -32,6 +32,8 @@ const VERTICAL = {
   'meow-prev-expand': true,
   'next-line': true,
   'previous-line': true,
+  'scroll-up-command': true,
+  'scroll-down-command': true,
 }
 
 def LineStartTarget(text: string, off: number): number
@@ -146,7 +148,7 @@ def CharOrExpand(ctx: P.Ctx, dx: number)
   endif
 enddef
 
-def LineOrExpand(ctx: P.Ctx, dy: number)
+export def LineOrExpand(ctx: P.Ctx, dy: number)
   if Sel.HasSelection(Sel.Primary(ctx))
     MoveExpand(ctx, 0, dy)
   else

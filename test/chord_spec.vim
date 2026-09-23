@@ -75,7 +75,9 @@ H.Describe('ChordSpec', () => {
     H.Eq(TargetOf('M-l'), 'downcase-word')
     H.Eq(TargetOf('M-c'), 'capitalize-word')
     H.Eq(TargetOf('M-d'), 'kill-word')
-    H.Eq(len(Rc.ChordOrder()), 34)
+    H.Eq(TargetOf('C-v'), 'scroll-up-command')
+    H.Eq(TargetOf('M-v'), 'scroll-down-command')
+    H.Eq(len(Rc.ChordOrder()), 37)
   })
 
   H.It('given the bundled defaults then the ported tranche-2 chords resolve to their verified action ids', () => {
@@ -118,7 +120,7 @@ H.Describe('ChordSpec', () => {
     var s = H.FreshSpec()
     s.GivenRc('cmap C-f ignore')
     H.Eq(TargetOf('C-f'), '')
-    H.Eq(len(Rc.ChordOrder()), 33)
+    H.Eq(len(Rc.ChordOrder()), 36)
   })
 
   H.It('given a pressed chord event then bindingFor resolves it and plain keys do not', () => {
@@ -136,13 +138,21 @@ H.Describe('ChordSpec', () => {
     H.Eq(Chord.Parse('alt shift E').shift, true)
   })
 
-  H.It('given NORMAL or MOTION then a mapped chord is claimed but INSERT and KEYPAD are not', () => {
+  H.It('given NORMAL MOTION INSERT or KEYPAD then a mapped chord is claimed', () => {
     H.FreshSpec()
     H.Eq(Chords.Claims(St.NORMAL, Chord.Parse('C-f')), true)
     H.Eq(Chords.Claims(St.MOTION, Chord.Parse('C-f')), true)
-    H.Eq(Chords.Claims(St.INSERT, Chord.Parse('C-f')), false)
-    H.Eq(Chords.Claims(St.KEYPAD, Chord.Parse('C-f')), false)
+    H.Eq(Chords.Claims(St.INSERT, Chord.Parse('C-f')), true)
+    H.Eq(Chords.Claims(St.KEYPAD, Chord.Parse('C-f')), true)
     H.Eq(Chords.Claims(St.NORMAL, Chord.Parse('C-q')), false)
+  })
+
+  H.It('given INSERT or KEYPAD then Alt-semicolon is never claimed so the keypad shortcut still opens or stays', () => {
+    H.FreshSpec()
+    H.Eq(Chords.Claims(St.INSERT, Chord.Parse('M-;')), false)
+    H.Eq(Chords.Claims(St.KEYPAD, Chord.Parse('M-;')), false)
+    H.Eq(Chords.Claims(St.NORMAL, Chord.Parse('M-;')), true)
+    H.Eq(Chords.Claims(St.MOTION, Chord.Parse('M-;')), true)
   })
 
   H.It('given an unmapped chord then it is handed back rather than swallowed', () => {
@@ -156,6 +166,16 @@ H.Describe('ChordSpec', () => {
     var s = H.FreshSpec()
     s.Given('plain text', '<caret>hello world')
     H.Eq(Chords.Dispatch(s.Ctx(), Chord.Parse('M-f')), true)
+    s.ThenCaretAt(5)
+  })
+
+  H.It('given KEYPAD mode then dispatching a chord exits the keypad first, then runs its command', () => {
+    var s = H.FreshSpec()
+    s.Given('plain text', '<caret>hello world')
+    s.WhenKeys(' ')
+    s.ThenMode(St.KEYPAD)
+    H.Eq(Chords.Dispatch(s.Ctx(), Chord.Parse('M-f')), true)
+    s.ThenMode(St.NORMAL)
     s.ThenCaretAt(5)
   })
 

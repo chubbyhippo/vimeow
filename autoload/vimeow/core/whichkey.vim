@@ -23,6 +23,8 @@ export const THINGS = [
   ['s', 'square [ ]'],
   ['c', 'curly { }'],
   ['g', 'string'],
+  ['/', 'slash-delimited'],
+  ['?', 'question-delimited'],
   ['e', 'symbol'],
   ['w', 'window'],
   ['b', 'buffer'],

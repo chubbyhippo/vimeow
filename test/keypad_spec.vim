@@ -122,8 +122,8 @@ H.Describe('ModesKeypadSpec', () => {
     endfor
   })
 
-  H.It('given the things which-key table then it names all twelve things', () => {
-    H.Eq(len(WhichKey.THINGS), 12)
+  H.It('given the things which-key table then it names all fourteen things', () => {
+    H.Eq(len(WhichKey.THINGS), 14)
     H.Eq(WhichKey.THINGS[0], ['r', 'round ( )'])
   })
 

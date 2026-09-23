@@ -214,6 +214,9 @@ def Dispatch(ctx: P.Ctx, binding: dict<any>)
 enddef
 
 export def RunBinding(ctx: P.Ctx, binding: dict<any>)
+  if ctx.state.mode == St.KEYPAD
+    Keypad.Exit(ctx)
+  endif
   Dispatch(ctx, binding)
   var group = Rc.RepeatMapFor(binding)
   if empty(group)
